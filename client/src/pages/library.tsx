@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Search, ChevronRight, Filter, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, ChevronRight, Filter, X, Download, Music } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { PrayerCard } from "@/components/brand/PrayerCard";
 import { SectionDivider } from "@/components/brand/SectionDivider";
 import { Button } from "@/components/ui/button";
 import { categories, prayers, durationBucket } from "@/lib/data";
+
+type UploadedPrayerItem = {
+  id: number;
+  title: string;
+  categorySlug: string;
+  description: string;
+  audioUrl: string;
+  audioOriginalName: string;
+  audioMimeType: string;
+  audioSize: number;
+  durationSeconds: number;
+  createdAt: string;
+};
 
 type PriceFilter = "all" | "free" | "paid";
 type DurationFilter = "all" | "short" | "medium" | "long";
@@ -31,6 +45,25 @@ export default function LibraryPage() {
   const [duration, setDuration] = useState<DurationFilter>("all");
   const [sort, setSort] = useState<Sort>("popular");
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const { data: uploadedData } = useQuery<{ ok: boolean; items: UploadedPrayerItem[] }>({
+    queryKey: ["/api/uploaded-prayers"],
+  });
+  const uploaded = uploadedData?.items ?? [];
+
+  const filteredUploaded = useMemo(() => {
+    let items = uploaded.slice();
+    if (q.trim()) {
+      const needle = q.trim().toLowerCase();
+      items = items.filter(
+        (u) =>
+          u.title.toLowerCase().includes(needle) ||
+          u.description.toLowerCase().includes(needle),
+      );
+    }
+    if (category !== "all") items = items.filter((u) => u.categorySlug === category);
+    return items;
+  }, [uploaded, q, category]);
 
   const filtered = useMemo(() => {
     let items = prayers.slice();
@@ -183,15 +216,31 @@ export default function LibraryPage() {
           {/* Main */}
           <section className="md:col-span-9">
             <div className="text-sm text-muted-foreground mb-4">
-              {filtered.length} {filtered.length === 1 ? "prayer" : "prayers"}
+              {filtered.length + filteredUploaded.length}{" "}
+              {filtered.length + filteredUploaded.length === 1 ? "prayer" : "prayers"}
             </div>
-            {filtered.length === 0 ? (
+            {filteredUploaded.length > 0 ? (
+              <div className="mb-8" data-testid="section-uploaded-prayers">
+                <div className="flex items-baseline justify-between mb-3">
+                  <h2 className="font-serif text-lg md:text-xl">Newest uploads</h2>
+                  <span className="text-xs text-muted-foreground">{filteredUploaded.length} new</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {filteredUploaded.map((u) => (
+                    <UploadedPrayerCard key={u.id} item={u} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {filtered.length === 0 && filteredUploaded.length === 0 ? (
               <EmptyState onClear={clearAll} />
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {filtered.map((p) => <PrayerCard key={p.id} prayer={p} />)}
-                </div>
+                {filtered.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {filtered.map((p) => <PrayerCard key={p.id} prayer={p} />)}
+                  </div>
+                ) : null}
                 <div className="mt-12">
                   <SectionDivider icon="flame" />
                 </div>
@@ -201,6 +250,54 @@ export default function LibraryPage() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
+  const cat = categories.find((c) => c.slug === item.categorySlug);
+  return (
+    <article
+      className="rounded-xl border border-card-border bg-card p-4 flex flex-col gap-3"
+      data-testid={`card-uploaded-prayer-${item.id}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-wider text-foreground/70 flex items-center gap-1">
+            <Music className="h-3 w-3" />
+            <span>{cat?.name || item.categorySlug}</span>
+          </div>
+          <h3
+            className="font-serif text-lg leading-snug font-semibold tracking-tight mt-1"
+            data-testid={`text-uploaded-card-title-${item.id}`}
+          >
+            {item.title}
+          </h3>
+        </div>
+        <span className="shrink-0 rounded-full bg-foreground text-background text-[10px] font-medium px-2 py-0.5">
+          New
+        </span>
+      </div>
+      {item.description ? (
+        <p className="text-sm text-muted-foreground line-clamp-3">{item.description}</p>
+      ) : null}
+      <audio
+        controls
+        preload="none"
+        src={item.audioUrl}
+        className="w-full h-9"
+        data-testid={`audio-library-uploaded-${item.id}`}
+      />
+      <div className="flex items-center justify-between pt-1">
+        <a
+          href={item.audioUrl}
+          download={item.audioOriginalName || `${item.title}.mp3`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
+          data-testid={`link-download-uploaded-${item.id}`}
+        >
+          <Download className="h-4 w-4" /> Download MP3
+        </a>
+      </div>
+    </article>
   );
 }
 

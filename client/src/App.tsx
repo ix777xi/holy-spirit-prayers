@@ -29,6 +29,7 @@ import {
   AdminUsers,
   AdminAnalytics,
   AdminSettings,
+  AdminUploads,
 } from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
@@ -60,6 +61,7 @@ function AppRouter() {
       {/* Admin */}
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/prayers" component={AdminPrayers} />
+      <Route path="/admin/uploads" component={AdminUploads} />
       <Route path="/admin/categories" component={AdminCategories} />
       <Route path="/admin/custom-requests" component={AdminCustomRequests} />
       <Route path="/admin/orders" component={AdminOrders} />

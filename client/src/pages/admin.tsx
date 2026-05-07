@@ -1,5 +1,6 @@
-import { useState, useMemo, ReactNode } from "react";
+import { useState, useMemo, ReactNode, useRef } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   BookOpen,
@@ -18,6 +19,9 @@ import {
   Clock,
   TrendingUp,
   DollarSign,
+  UploadCloud,
+  Trash2,
+  Music,
 } from "lucide-react";
 import {
   LineChart,
@@ -89,6 +93,7 @@ import { useToast } from "@/hooks/use-toast";
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/prayers", label: "Prayers", icon: BookOpen },
+  { href: "/admin/uploads", label: "Upload MP3", icon: UploadCloud },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   {
     href: "/admin/custom-requests",
@@ -1162,6 +1167,258 @@ export function AdminSettings() {
           </Card>
         </TabsContent>
       </Tabs>
+    </AdminShell>
+  );
+}
+
+/* ---------- Uploads (MP3 prayers) ---------- */
+
+type UploadedPrayerItem = {
+  id: number;
+  title: string;
+  categorySlug: string;
+  description: string;
+  audioUrl: string;
+  audioOriginalName: string;
+  audioMimeType: string;
+  audioSize: number;
+  durationSeconds: number;
+  createdAt: string;
+};
+
+function formatBytes(n: number) {
+  if (!n) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+export function AdminUploads() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [title, setTitle] = useState("");
+  const [categorySlug, setCategorySlug] = useState<string>(categories[0]?.slug || "");
+  const [description, setDescription] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data, isLoading } = useQuery<{ ok: boolean; items: UploadedPrayerItem[] }>({
+    queryKey: ["/api/uploaded-prayers"],
+  });
+
+  const items = data?.items ?? [];
+
+  const removeMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/uploaded-prayers/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/uploaded-prayers"] });
+      toast({ title: "Prayer removed" });
+    },
+    onError: (e: any) => toast({ title: "Could not remove", description: e?.message || "", variant: "destructive" }),
+  });
+
+  const reset = () => {
+    setTitle("");
+    setCategorySlug(categories[0]?.slug || "");
+    setDescription("");
+    setFile(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      toast({ title: "Select an MP3 file first", variant: "destructive" });
+      return;
+    }
+    if (!title.trim()) {
+      toast({ title: "Title is required", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append("title", title.trim());
+      fd.append("categorySlug", categorySlug);
+      fd.append("description", description.trim());
+      fd.append("audio", file);
+      const res = await fetch("/api/uploaded-prayers", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json?.error || "Upload failed");
+      toast({ title: "Prayer uploaded", description: "Now available in the Prayer Library." });
+      reset();
+      qc.invalidateQueries({ queryKey: ["/api/uploaded-prayers"] });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err?.message || "", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <AdminShell
+      title="Upload MP3 Prayers"
+      subtitle="Add an audio prayer with category, title, and description. It will appear in the public Prayer Library."
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <Card className="lg:col-span-2" data-testid="card-upload-form">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg">New audio prayer</CardTitle>
+            <CardDescription>MP3 only. Max 50&nbsp;MB.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submit} className="space-y-4" data-testid="form-upload-prayer">
+              <div>
+                <Label htmlFor="up-title">Title</Label>
+                <Input
+                  id="up-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Evening Surrender"
+                  required
+                  data-testid="input-upload-title"
+                />
+              </div>
+              <div>
+                <Label htmlFor="up-cat">Category</Label>
+                <Select value={categorySlug} onValueChange={setCategorySlug}>
+                  <SelectTrigger id="up-cat" data-testid="select-upload-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.slug} value={c.slug}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="up-desc">Description</Label>
+                <Textarea
+                  id="up-desc"
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="A short description of this prayer."
+                  data-testid="input-upload-description"
+                />
+              </div>
+              <div>
+                <Label htmlFor="up-file">MP3 file</Label>
+                <input
+                  ref={fileRef}
+                  id="up-file"
+                  type="file"
+                  accept="audio/mpeg,audio/mp3,.mp3"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm mt-2 file:mr-3 file:rounded-md file:border-0 file:bg-foreground file:text-background file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-foreground/90"
+                  data-testid="input-upload-file"
+                />
+                {file ? (
+                  <div className="text-xs text-muted-foreground mt-2" data-testid="text-upload-file-info">
+                    {file.name} · {formatBytes(file.size)}
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-foreground text-background hover:bg-foreground/90"
+                  data-testid="button-upload-submit"
+                >
+                  <UploadCloud className="h-4 w-4 mr-2" />
+                  {submitting ? "Uploading…" : "Upload prayer"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={reset}
+                  disabled={submitting}
+                  data-testid="button-upload-reset"
+                >
+                  Reset
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3" data-testid="card-uploaded-list">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg">Uploaded prayers</CardTitle>
+            <CardDescription>
+              {isLoading ? "Loading…" : `${items.length} uploaded ${items.length === 1 ? "prayer" : "prayers"}`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {items.length === 0 && !isLoading ? (
+              <div className="text-sm text-muted-foreground border border-dashed rounded-md p-6 text-center">
+                No uploads yet. Add one with the form to the left.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {items.map((it) => {
+                  const cat = categories.find((c) => c.slug === it.categorySlug);
+                  return (
+                    <div
+                      key={it.id}
+                      className="border rounded-md p-3 flex flex-col gap-2"
+                      data-testid={`row-uploaded-prayer-${it.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Music className="h-4 w-4 text-foreground/70" />
+                            <div className="font-medium truncate" data-testid={`text-uploaded-title-${it.id}`}>
+                              {it.title}
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {cat?.name || it.categorySlug} · {formatBytes(it.audioSize)}
+                          </div>
+                          {it.description ? (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{it.description}</p>
+                          ) : null}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            if (confirm(`Delete "${it.title}"?`)) removeMut.mutate(it.id);
+                          }}
+                          data-testid={`button-delete-uploaded-${it.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <audio
+                        controls
+                        src={it.audioUrl}
+                        preload="none"
+                        className="w-full h-9"
+                        data-testid={`audio-uploaded-${it.id}`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </AdminShell>
   );
 }

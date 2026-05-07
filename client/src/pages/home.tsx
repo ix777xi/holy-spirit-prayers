@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Headphones, Download, Heart, ArrowRight } from "lucide-react";
+import { Download, Heart, ArrowRight } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { Scripture } from "@/components/brand/Scripture";
 import { SectionDivider } from "@/components/brand/SectionDivider";
@@ -98,26 +98,53 @@ export default function HomePage() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">A Simple Rhythm</div>
-          <h2 className="headline text-3xl md:text-4xl">How it works</h2>
+      <section className="mx-auto max-w-5xl px-6 py-12 md:py-16">
+        <div className="text-center max-w-2xl mx-auto mb-8">
+          <div className="text-xs uppercase tracking-[0.18em] text-foreground/70 mb-2">Choose your path</div>
+          <h2 className="headline text-2xl md:text-3xl">How it works</h2>
+          <p className="text-sm text-muted-foreground mt-2">Two simple options — pick what fits your moment.</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { icon: Headphones, title: "Listen", desc: "Preview any prayer before you buy. Stream a 30–60 second sample on every prayer detail page." },
-            { icon: Download,  title: "Download", desc: "Purchase ($7) and keep your prayer forever — full audio, transcript, and meditation guide." },
-            { icon: Heart,     title: "Personalize", desc: "Request a custom prayer ($10) crafted from your situation. Delivered in 24–48 hours." },
-          ].map((step, i) => (
-            <div key={step.title} className="rounded-xl border border-card-border bg-card p-7 text-center space-y-3 hover-elevate">
-              <div className="mx-auto w-12 h-12 rounded-full bg-brand-cream dark:bg-brand-gold/20 text-brand-gold inline-flex items-center justify-center">
-                <step.icon className="h-5 w-5" />
+        <div className="grid md:grid-cols-2 gap-4 md:gap-5">
+          <Link
+            href="/library"
+            data-testid="howitworks-option-purchase"
+            className="group rounded-xl border border-foreground/15 bg-card p-6 hover:border-foreground transition-colors"
+          >
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 w-11 h-11 rounded-full bg-foreground text-background inline-flex items-center justify-center">
+                <Download className="h-5 w-5" />
               </div>
-              <div className="text-xs text-muted-foreground tabular-nums">Step {i + 1}</div>
-              <h3 className="font-serif text-xl font-semibold">{step.title}</h3>
-              <p className="text-sm text-muted-foreground">{step.desc}</p>
+              <div className="min-w-0 space-y-1.5">
+                <h3 className="font-serif text-lg md:text-xl font-semibold">Purchase &amp; download a prayer</h3>
+                <p className="text-sm text-muted-foreground">
+                  Browse the library, buy any prayer for $7, and keep the audio, transcript, and meditation guide forever.
+                </p>
+                <div className="inline-flex items-center gap-1 text-sm font-medium text-foreground group-hover:text-brand-gold pt-1">
+                  Browse the library <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
             </div>
-          ))}
+          </Link>
+          <Link
+            href="/custom-prayer"
+            data-testid="howitworks-option-personalize"
+            className="group rounded-xl border border-foreground/15 bg-card p-6 hover:border-foreground transition-colors"
+          >
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 w-11 h-11 rounded-full bg-foreground text-background inline-flex items-center justify-center">
+                <Heart className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                <h3 className="font-serif text-lg md:text-xl font-semibold">Personalize your prayer</h3>
+                <p className="text-sm text-muted-foreground">
+                  Tell us your situation and we&apos;ll craft a custom prayer ($10), delivered in 24–48 hours.
+                </p>
+                <div className="inline-flex items-center gap-1 text-sm font-medium text-foreground group-hover:text-brand-gold pt-1">
+                  Request a custom prayer <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+          </Link>
         </div>
       </section>
 

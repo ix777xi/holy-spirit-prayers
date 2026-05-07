@@ -7,6 +7,27 @@ import { eq } from "drizzle-orm";
 const sqlite = new Database("data.db");
 sqlite.pragma("journal_mode = WAL");
 
+// Ensure required tables exist (no migration tooling at runtime)
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS uploaded_prayers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    category_slug TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    audio_filename TEXT NOT NULL,
+    audio_original_name TEXT NOT NULL DEFAULT '',
+    audio_mime_type TEXT NOT NULL DEFAULT 'audio/mpeg',
+    audio_size INTEGER NOT NULL DEFAULT 0,
+    duration_seconds INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+`);
+
 export const db = drizzle(sqlite);
 
 export interface IStorage {
