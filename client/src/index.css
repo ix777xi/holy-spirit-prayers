@@ -1,0 +1,283 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Holy Spirit Prayers — Design System
+  Brand palette:
+    Primary Gold #C9A84C  → 43 53% 54%
+    Soft Blue   #7BA7BC   → 198 30% 61%
+    Deep Navy   #1B2A4A   → 222 46% 20%
+    Warm Cream  #FDF8F0   → 38 71% 97%
+    Pure White  #FFFFFF
+    Soft Gray   #F5F5F5   → 0 0% 96%
+    Text Dark   #2D2D2D   → 0 0% 18%
+*/
+
+/* LIGHT MODE */
+:root {
+  --button-outline: rgba(27, 42, 74, 0.10);
+  --badge-outline: rgba(27, 42, 74, 0.06);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(27, 42, 74, 0.04);
+  --elevate-2: rgba(27, 42, 74, 0.08);
+
+  /* Surfaces */
+  --background: 38 71% 97%;          /* Warm Cream */
+  --foreground: 0 0% 18%;             /* Text Dark */
+  --border: 38 30% 88%;
+  --card: 0 0% 100%;                  /* White */
+  --card-foreground: 0 0% 18%;
+  --card-border: 38 30% 90%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222 46% 20%;
+  --sidebar-border: 38 30% 90%;
+  --sidebar-primary: 43 53% 54%;
+  --sidebar-primary-foreground: 222 46% 16%;
+  --sidebar-accent: 38 50% 94%;
+  --sidebar-accent-foreground: 222 46% 20%;
+  --sidebar-ring: 43 53% 54%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 18%;
+  --popover-border: 38 30% 90%;
+
+  /* Brand */
+  --primary: 43 53% 54%;              /* Primary Gold */
+  --primary-foreground: 222 46% 16%;
+  --secondary: 198 30% 61%;           /* Soft Blue */
+  --secondary-foreground: 222 46% 16%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 222 15% 38%;
+  --accent: 38 50% 92%;
+  --accent-foreground: 222 46% 20%;
+  --destructive: 0 65% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 38 25% 82%;
+  --ring: 43 53% 54%;
+
+  /* Charts: gold, navy, soft-blue, mauve, sage */
+  --chart-1: 43 53% 54%;
+  --chart-2: 222 46% 30%;
+  --chart-3: 198 30% 55%;
+  --chart-4: 350 35% 55%;
+  --chart-5: 150 22% 48%;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Cormorant Garamond", Georgia, "Iowan Old Style", serif;
+  --font-mono: ui-monospace, Menlo, monospace;
+  --radius: 0.5rem;
+
+  --shadow-2xs: 0 1px 2px 0 hsl(222 46% 20% / 0.04);
+  --shadow-xs:  0 1px 2px 0 hsl(222 46% 20% / 0.05);
+  --shadow-sm:  0 1px 3px 0 hsl(222 46% 20% / 0.08), 0 1px 2px -1px hsl(222 46% 20% / 0.06);
+  --shadow:     0 2px 6px 0 hsl(222 46% 20% / 0.08), 0 1px 2px -1px hsl(222 46% 20% / 0.04);
+  --shadow-md:  0 6px 16px -3px hsl(222 46% 20% / 0.10), 0 2px 4px -2px hsl(222 46% 20% / 0.06);
+  --shadow-lg:  0 14px 28px -6px hsl(222 46% 20% / 0.14), 0 4px 8px -4px hsl(222 46% 20% / 0.06);
+  --shadow-xl:  0 24px 48px -12px hsl(222 46% 20% / 0.20);
+  --shadow-2xl: 0 32px 64px -12px hsl(222 46% 20% / 0.28);
+
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  /* Brand tokens (direct hex access) */
+  --brand-gold: #C9A84C;
+  --brand-gold-soft: #E0C783;
+  --brand-blue: #7BA7BC;
+  --brand-navy: #1B2A4A;
+  --brand-cream: #FDF8F0;
+  --brand-gray: #F5F5F5;
+  --brand-text: #2D2D2D;
+
+  --primary-border: rgba(27, 42, 74, 0.12);
+  --secondary-border: rgba(27, 42, 74, 0.10);
+  --muted-border: rgba(27, 42, 74, 0.06);
+  --accent-border: rgba(27, 42, 74, 0.08);
+  --destructive-border: rgba(120, 30, 30, 0.20);
+  --sidebar-primary-border: rgba(27, 42, 74, 0.12);
+  --sidebar-accent-border: rgba(27, 42, 74, 0.08);
+}
+
+/* DARK MODE — cathedral night */
+.dark {
+  --button-outline: rgba(255, 255, 255, 0.08);
+  --badge-outline: rgba(255, 255, 255, 0.05);
+  --elevate-1: rgba(255, 255, 255, 0.04);
+  --elevate-2: rgba(255, 255, 255, 0.08);
+
+  --background: 222 46% 9%;
+  --foreground: 38 30% 92%;
+  --border: 222 30% 18%;
+  --card: 222 40% 12%;
+  --card-foreground: 38 30% 92%;
+  --card-border: 222 30% 20%;
+  --sidebar: 222 44% 11%;
+  --sidebar-foreground: 38 30% 90%;
+  --sidebar-border: 222 30% 18%;
+  --sidebar-primary: 43 53% 60%;
+  --sidebar-primary-foreground: 222 46% 12%;
+  --sidebar-accent: 222 30% 18%;
+  --sidebar-accent-foreground: 38 30% 90%;
+  --sidebar-ring: 43 53% 60%;
+  --popover: 222 40% 12%;
+  --popover-foreground: 38 30% 92%;
+  --popover-border: 222 30% 20%;
+
+  --primary: 43 53% 60%;
+  --primary-foreground: 222 46% 10%;
+  --secondary: 198 30% 55%;
+  --secondary-foreground: 222 46% 10%;
+  --muted: 222 30% 16%;
+  --muted-foreground: 38 20% 70%;
+  --accent: 222 30% 18%;
+  --accent-foreground: 38 30% 92%;
+  --destructive: 0 60% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 222 30% 22%;
+  --ring: 43 53% 60%;
+
+  --chart-1: 43 53% 60%;
+  --chart-2: 198 30% 65%;
+  --chart-3: 38 50% 80%;
+  --chart-4: 350 35% 65%;
+  --chart-5: 150 22% 60%;
+
+  --primary-border: rgba(255, 255, 255, 0.10);
+  --secondary-border: rgba(255, 255, 255, 0.08);
+  --muted-border: rgba(255, 255, 255, 0.06);
+  --accent-border: rgba(255, 255, 255, 0.08);
+  --destructive-border: rgba(255, 120, 120, 0.20);
+  --sidebar-primary-border: rgba(255, 255, 255, 0.10);
+  --sidebar-accent-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings & scripture */
+.font-serif, h1.serif, h2.serif, h3.serif, .scripture {
+  font-family: var(--font-serif);
+  font-feature-settings: "liga" on, "dlig" on;
+}
+
+.scripture {
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.005em;
+  color: hsl(var(--foreground));
+}
+
+.scripture-bar {
+  border-left: 3px solid var(--brand-gold);
+  padding-left: 1rem;
+}
+
+/* Brand gradient surfaces */
+.surface-cathedral {
+  background:
+    radial-gradient(120% 80% at 10% 0%, rgba(201, 168, 76, 0.18), transparent 55%),
+    radial-gradient(120% 80% at 100% 0%, rgba(123, 167, 188, 0.22), transparent 55%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+}
+
+.dark .surface-cathedral {
+  background:
+    radial-gradient(120% 80% at 10% 0%, rgba(201, 168, 76, 0.14), transparent 55%),
+    radial-gradient(120% 80% at 100% 0%, rgba(123, 167, 188, 0.12), transparent 55%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(222 46% 7%));
+}
+
+/* Stained glass artwork swatches (used for prayer thumbnails) */
+.art-glass {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.art-glass::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(60% 80% at 30% 30%, rgba(255,255,255,0.35), transparent 60%),
+    radial-gradient(50% 70% at 75% 70%, rgba(255,255,255,0.18), transparent 70%);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.art-glass::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(115deg, transparent 48%, rgba(255,255,255,0.18) 49%, rgba(255,255,255,0.18) 50%, transparent 51%),
+    linear-gradient(65deg, transparent 48%, rgba(0,0,0,0.10) 49%, rgba(0,0,0,0.10) 50%, transparent 51%);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Hide scrollbar in horizontal sliders */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Prevent horizontal overflow on mobile */
+html, body { overflow-x: hidden; }
+
+/* Smooth audio progress */
+.player-progress {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right,
+    var(--brand-gold) var(--progress, 0%),
+    hsl(var(--muted)) var(--progress, 0%));
+}
+.player-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px; width: 14px;
+  border-radius: 999px;
+  background: var(--brand-gold);
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.20);
+  cursor: pointer;
+}
+.player-progress::-moz-range-thumb {
+  height: 14px; width: 14px;
+  border-radius: 999px;
+  background: var(--brand-gold);
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.20);
+  cursor: pointer;
+}
+
+/* Hover elevation helpers used by shadcn variants */
+.hover-elevate { transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+.hover-elevate:hover { background-color: hsl(var(--accent)); }
+.hover-elevate:active { transform: translateY(1px); }
+
+/* Print-grade headline rhythm */
+.headline {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.08;
+}
