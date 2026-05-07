@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Download, Star, Trash2, MessageSquareText, LogOut, Bookmark, Lock, Crown } from "lucide-react";
+import { Download, FileText, Star, Trash2, MessageSquareText, LogOut, Bookmark, Lock, Crown } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
@@ -122,7 +122,13 @@ export default function AccountPage() {
 
   const { data: uploadedData } = useQuery<{
     ok: boolean;
-    items: Array<{ id: number; isFree?: boolean }>;
+    items: Array<{
+      id: number;
+      isFree?: boolean;
+      hasPdf?: boolean;
+      pdfOriginalName?: string;
+      pdfDownloadUrl?: string | null;
+    }>;
   }>({
     queryKey: ["/api/uploaded-prayers"],
     enabled: !!serverUser,
@@ -220,6 +226,12 @@ export default function AccountPage() {
       .filter((p) => p.isFree)
       .map((p) => p.id),
   );
+  const pdfByPrayerId = new Map<number, { name?: string; url?: string | null }>();
+  for (const p of uploadedData?.items ?? []) {
+    if (p.hasPdf) {
+      pdfByPrayerId.set(p.id, { name: p.pdfOriginalName, url: p.pdfDownloadUrl ?? null });
+    }
+  }
   const hasAccessToItem = (item: UserPrayer): boolean => {
     if (item.source !== "uploaded") return true;
     if (subscribed) return true;
@@ -234,6 +246,14 @@ export default function AccountPage() {
   const protectedDownloadUrl = (item: UserPrayer): string | null => {
     if (item.source !== "uploaded") return item.audioUrl || null;
     return `/api/uploaded-prayers/${item.prayerKey}/download`;
+  };
+  const protectedPdfFor = (item: UserPrayer): { url: string; name?: string } | null => {
+    if (item.source !== "uploaded") return null;
+    const idNum = Number(item.prayerKey);
+    if (!Number.isFinite(idNum)) return null;
+    const meta = pdfByPrayerId.get(idNum);
+    if (!meta) return null;
+    return { url: `/api/uploaded-prayers/${idNum}/pdf/download`, name: meta.name };
   };
 
   return (
@@ -412,15 +432,27 @@ export default function AccountPage() {
                         const access = hasAccessToItem(item);
                         const url = protectedDownloadUrl(item);
                         if (!access || !url) return null;
+                        const pdf = protectedPdfFor(item);
                         return (
-                          <a
-                            href={url}
-                            onClick={() => recordDownload.mutate(item.id)}
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
-                            data-testid={`link-account-download-${item.id}`}
-                          >
-                            <Download className="h-4 w-4" /> Download MP3
-                          </a>
+                          <div className="inline-flex items-center gap-3 flex-wrap">
+                            <a
+                              href={url}
+                              onClick={() => recordDownload.mutate(item.id)}
+                              className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
+                              data-testid={`link-account-download-${item.id}`}
+                            >
+                              <Download className="h-4 w-4" /> Download MP3
+                            </a>
+                            {pdf ? (
+                              <a
+                                href={pdf.url}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
+                                data-testid={`link-account-pdf-download-${item.id}`}
+                              >
+                                <FileText className="h-4 w-4" /> Download PDF
+                              </a>
+                            ) : null}
+                          </div>
                         );
                       })()}
                     </div>

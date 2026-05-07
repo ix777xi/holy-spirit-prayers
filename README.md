@@ -139,6 +139,7 @@ Admin: `/#/admin`, `/#/admin/prayers`, `/#/admin/categories`,
 | GET    | `/api/uploaded-prayers/:id/access`             | Per-user access status (auth/subscription/purchase) |
 | GET    | `/api/uploaded-prayers/:id/stream`             | **Protected** audio stream (auth + entitlement required) |
 | GET    | `/api/uploaded-prayers/:id/download`           | **Protected** MP3 download (auth + entitlement required) |
+| GET    | `/api/uploaded-prayers/:id/pdf/download`       | **Protected** companion PDF download (same entitlement gate) |
 | POST   | `/api/uploaded-prayers/:id/create-checkout-session` | Start a $7 Stripe Checkout for this prayer |
 | GET    | `/api/me/purchases`                            | List the signed-in user's prayer purchases + subscription |
 | POST   | `/api/create-subscription-checkout-session`    | Start a $27/month Stripe Checkout subscription|
@@ -236,6 +237,32 @@ flags. `audioUrl` and `downloadUrl` are returned only to viewers who already
 have access. The Library renders a **Buy for $7** button for everyone else,
 which posts to `/api/uploaded-prayers/:id/create-checkout-session` and
 forwards the user to Stripe Checkout.
+
+### Companion PDF downloads
+
+Each uploaded prayer can optionally include a downloadable PDF (transcript,
+workbook, or printable companion). The admin upload form at `/#/admin/uploads`
+exposes an optional **Companion PDF** input (`data-testid="input-upload-pdf"`)
+alongside the MP3 input — only `application/pdf` files are accepted server-side
+and the PDF is stored on disk in `uploads/` next to the MP3 with a randomized
+filename, never exposed by a public path.
+
+`GET /api/uploaded-prayers` includes `hasPdf`, `pdfOriginalName`, `pdfMimeType`,
+`pdfSize`, and a `pdfDownloadUrl` (only populated when the viewer has access).
+The download endpoint `/api/uploaded-prayers/:id/pdf/download` enforces the
+**same entitlement rules as the MP3**: a logged-in session plus one of (a) the
+prayer is marked free, (b) an active monthly subscription, (c) a paid
+one-time purchase for that specific prayer, or (d) admin session. Anonymous
+visitors get `401`; logged-in but unentitled users get `402 Payment required`.
+
+After purchasing through the $7 Stripe Checkout (or for any subscriber/free
+prayer), the Prayer Library card and the prayer detail page render a
+**Download PDF** button (`data-testid="link-download-pdf-<id>"` and
+`link-detail-pdf-download`). The Account portal also surfaces a
+**Download PDF** action next to the MP3 download for any saved uploaded prayer
+the user has access to (`data-testid="link-account-pdf-download-<id>"`).
+When a PDF is attached but the visitor doesn't yet have access, the library
+and detail pages show an **Includes PDF** indicator without exposing the URL.
 
 ### Stripe webhook setup
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Download, ChevronRight, Lock, BookOpen, ArrowLeft, BookmarkPlus } from "lucide-react";
+import { Download, ChevronRight, Lock, BookOpen, ArrowLeft, BookmarkPlus, FileText } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { Scripture } from "@/components/brand/Scripture";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,11 @@ type UploadedPrayerItem = {
   audioOriginalName: string;
   audioMimeType: string;
   audioSize: number;
+  hasPdf?: boolean;
+  pdfOriginalName?: string;
+  pdfMimeType?: string;
+  pdfSize?: number;
+  pdfDownloadUrl?: string | null;
   createdAt: string;
   isFree: boolean;
   access: boolean;
@@ -183,6 +188,15 @@ export default function PrayerDetailPage() {
             ) : null}
 
             <div className="rounded-xl border border-card-border bg-card p-5 flex flex-col gap-4">
+              {prayer.hasPdf && !prayer.access ? (
+                <div
+                  className="text-[11px] uppercase tracking-wider text-brand-gold inline-flex items-center gap-1.5"
+                  data-testid="badge-detail-has-pdf"
+                >
+                  <FileText className="h-3.5 w-3.5" /> Includes downloadable PDF
+                </div>
+              ) : null}
+
               {prayer.access && prayer.audioUrl ? (
                 <audio
                   controls
@@ -212,13 +226,24 @@ export default function PrayerDetailPage() {
                   {serverUser ? (saving ? "Saving…" : "Save to account") : "Sign in to save"}
                 </Button>
                 {prayer.access && prayer.downloadUrl ? (
-                  <a
-                    href={prayer.downloadUrl}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-navy hover:bg-brand-goldsoft"
-                    data-testid="link-detail-download"
-                  >
-                    <Download className="h-4 w-4" /> Download MP3
-                  </a>
+                  <>
+                    <a
+                      href={prayer.downloadUrl}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-navy hover:bg-brand-goldsoft"
+                      data-testid="link-detail-download"
+                    >
+                      <Download className="h-4 w-4" /> Download MP3
+                    </a>
+                    {prayer.hasPdf && prayer.pdfDownloadUrl ? (
+                      <a
+                        href={prayer.pdfDownloadUrl}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-brand-gold/60 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/10"
+                        data-testid="link-detail-pdf-download"
+                      >
+                        <FileText className="h-4 w-4" /> Download PDF
+                      </a>
+                    ) : null}
+                  </>
                 ) : prayer.isFree && !serverUser ? (
                   <Link href="/login">
                     <Button

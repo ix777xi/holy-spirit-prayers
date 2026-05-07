@@ -37,6 +37,10 @@ export const uploadedPrayers = sqliteTable("uploaded_prayers", {
   audioMimeType: text("audio_mime_type").notNull().default("audio/mpeg"),
   audioSize: integer("audio_size").notNull().default(0),
   durationSeconds: integer("duration_seconds").notNull().default(0),
+  pdfFilename: text("pdf_filename").notNull().default(""),
+  pdfOriginalName: text("pdf_original_name").notNull().default(""),
+  pdfMimeType: text("pdf_mime_type").notNull().default(""),
+  pdfSize: integer("pdf_size").notNull().default(0),
   isFree: integer("is_free").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });

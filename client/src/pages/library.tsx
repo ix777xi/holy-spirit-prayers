@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ChevronRight, Filter, X, Download, Music, BookmarkPlus, Lock, ArrowRight } from "lucide-react";
+import { Search, ChevronRight, Filter, X, Download, FileText, Music, BookmarkPlus, Lock, ArrowRight } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { SectionDivider } from "@/components/brand/SectionDivider";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,11 @@ type UploadedPrayerItem = {
   audioMimeType: string;
   audioSize: number;
   durationSeconds: number;
+  hasPdf?: boolean;
+  pdfOriginalName?: string;
+  pdfMimeType?: string;
+  pdfSize?: number;
+  pdfDownloadUrl?: string | null;
   createdAt: string;
   isFree: boolean;
   access: boolean;
@@ -328,6 +333,15 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
         <p className="text-sm text-muted-foreground line-clamp-3">{item.description}</p>
       ) : null}
 
+      {item.hasPdf && !item.access ? (
+        <div
+          className="text-[11px] uppercase tracking-wider text-brand-gold inline-flex items-center gap-1"
+          data-testid={`badge-library-has-pdf-${item.id}`}
+        >
+          <FileText className="h-3 w-3" /> Includes PDF
+        </div>
+      ) : null}
+
       {item.access && item.audioUrl ? (
         <audio
           controls
@@ -364,13 +378,24 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
         </button>
 
         {item.access && item.downloadUrl ? (
-          <a
-            href={item.downloadUrl}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
-            data-testid={`link-download-uploaded-${item.id}`}
-          >
-            <Download className="h-4 w-4" /> Download MP3
-          </a>
+          <div className="inline-flex items-center gap-3 flex-wrap">
+            <a
+              href={item.downloadUrl}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
+              data-testid={`link-download-uploaded-${item.id}`}
+            >
+              <Download className="h-4 w-4" /> Download MP3
+            </a>
+            {item.hasPdf && item.pdfDownloadUrl ? (
+              <a
+                href={item.pdfDownloadUrl}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
+                data-testid={`link-download-pdf-${item.id}`}
+              >
+                <FileText className="h-4 w-4" /> Download PDF
+              </a>
+            ) : null}
+          </div>
         ) : !serverUser ? (
           <Link
             href="/login"

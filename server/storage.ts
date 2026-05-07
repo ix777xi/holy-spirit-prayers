@@ -41,6 +41,10 @@ sqlite.exec(`
     audio_mime_type TEXT NOT NULL DEFAULT 'audio/mpeg',
     audio_size INTEGER NOT NULL DEFAULT 0,
     duration_seconds INTEGER NOT NULL DEFAULT 0,
+    pdf_filename TEXT NOT NULL DEFAULT '',
+    pdf_original_name TEXT NOT NULL DEFAULT '',
+    pdf_mime_type TEXT NOT NULL DEFAULT '',
+    pdf_size INTEGER NOT NULL DEFAULT 0,
     is_free INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
@@ -105,6 +109,10 @@ tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN scripture_quote TEXT NOT N
 tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN scripture_reference TEXT NOT NULL DEFAULT '';`);
 tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN category_description TEXT NOT NULL DEFAULT '';`);
 tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN is_free INTEGER NOT NULL DEFAULT 0;`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN pdf_filename TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN pdf_original_name TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN pdf_mime_type TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN pdf_size INTEGER NOT NULL DEFAULT 0;`);
 
 export const db = drizzle(sqlite);
 

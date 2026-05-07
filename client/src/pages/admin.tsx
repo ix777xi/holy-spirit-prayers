@@ -14,6 +14,7 @@ import {
   UploadCloud as UploadIcon,
   Trash2,
   Music,
+  FileText,
   ShieldCheck,
   LogOut,
   Loader2,
@@ -623,6 +624,11 @@ type UploadedPrayerItem = {
   audioMimeType: string;
   audioSize: number;
   durationSeconds: number;
+  hasPdf?: boolean;
+  pdfOriginalName?: string;
+  pdfMimeType?: string;
+  pdfSize?: number;
+  pdfDownloadUrl?: string | null;
   isFree?: boolean;
   createdAt: string;
 };
@@ -659,6 +665,7 @@ function AdminUploadsAuthenticated({
   const { toast } = useToast();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const pdfRef = useRef<HTMLInputElement | null>(null);
 
   const initialCategorySlug = categories[0]?.slug || "";
   const initialCategoryDescription = categories[0]?.description || "";
@@ -675,6 +682,7 @@ function AdminUploadsAuthenticated({
   const [scriptureReference, setScriptureReference] = useState("");
   const [isFree, setIsFree] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -716,7 +724,9 @@ function AdminUploadsAuthenticated({
     setScriptureReference("");
     setIsFree(false);
     setFile(null);
+    setPdfFile(null);
     if (fileRef.current) fileRef.current.value = "";
+    if (pdfRef.current) pdfRef.current.value = "";
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -728,6 +738,15 @@ function AdminUploadsAuthenticated({
     if (!title.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
+    }
+    if (pdfFile) {
+      const isPdf =
+        pdfFile.type.toLowerCase().includes("pdf") ||
+        /\.pdf$/i.test(pdfFile.name);
+      if (!isPdf) {
+        toast({ title: "Companion file must be a PDF", variant: "destructive" });
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -744,6 +763,7 @@ function AdminUploadsAuthenticated({
       fd.append("categoryDescription", categoryDescription.trim());
       fd.append("isFree", isFree ? "true" : "false");
       fd.append("audio", file);
+      if (pdfFile) fd.append("pdf", pdfFile);
       const res = await fetch("/api/uploaded-prayers", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json?.error || "Upload failed");
@@ -961,6 +981,27 @@ function AdminUploadsAuthenticated({
                   </div>
                 ) : null}
               </div>
+
+              <div>
+                <Label htmlFor="up-pdf">Companion PDF (optional)</Label>
+                <input
+                  ref={pdfRef}
+                  id="up-pdf"
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm mt-2 file:mr-3 file:rounded-md file:border-0 file:bg-foreground file:text-background file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-foreground/90"
+                  data-testid="input-upload-pdf"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  PDF transcript or workbook offered for download alongside the audio. Same access rules as the MP3.
+                </p>
+                {pdfFile ? (
+                  <div className="text-xs text-muted-foreground mt-2" data-testid="text-upload-pdf-info">
+                    {pdfFile.name} · {formatBytes(pdfFile.size)}
+                  </div>
+                ) : null}
+              </div>
               <div className="flex items-center gap-2 pt-1">
                 <Button
                   type="submit"
@@ -1067,6 +1108,36 @@ function AdminUploadsAuthenticated({
                         className="w-full h-9"
                         data-testid={`audio-uploaded-${it.id}`}
                       />
+                      {it.hasPdf ? (
+                        <div
+                          className="flex items-center justify-between gap-2 text-xs text-muted-foreground border rounded-md px-2.5 py-1.5"
+                          data-testid={`row-uploaded-pdf-${it.id}`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <FileText className="h-3.5 w-3.5 text-brand-gold shrink-0" />
+                            <span className="truncate" data-testid={`text-uploaded-pdf-name-${it.id}`}>
+                              {it.pdfOriginalName || "prayer.pdf"}
+                            </span>
+                            <span className="shrink-0">· {formatBytes(it.pdfSize || 0)}</span>
+                          </div>
+                          {it.pdfDownloadUrl ? (
+                            <a
+                              href={it.pdfDownloadUrl}
+                              className="text-brand-gold hover:underline shrink-0"
+                              data-testid={`link-uploaded-pdf-download-${it.id}`}
+                            >
+                              Download
+                            </a>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div
+                          className="text-[11px] text-muted-foreground"
+                          data-testid={`text-uploaded-pdf-status-${it.id}`}
+                        >
+                          No PDF attached
+                        </div>
+                      )}
                     </div>
                   );
                 })}

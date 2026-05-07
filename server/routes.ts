@@ -56,7 +56,7 @@ function ensureUploadDir() {
   if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50MB
+const MAX_UPLOAD_BYTES = 75 * 1024 * 1024; // 75MB (audio + optional PDF)
 
 type ParsedField = { type: "field"; name: string; value: string };
 type ParsedFile = {
@@ -284,6 +284,7 @@ export async function registerRoutes(
         const isFree = !!r.isFree;
         const access =
           isAdmin || (!!userId && (isFree || subscribed || purchased));
+        const hasPdf = !!r.pdfFilename;
         return {
           id: r.id,
           title: r.title,
@@ -302,6 +303,12 @@ export async function registerRoutes(
           audioMimeType: r.audioMimeType,
           audioSize: r.audioSize,
           durationSeconds: r.durationSeconds,
+          hasPdf,
+          pdfOriginalName: r.pdfOriginalName,
+          pdfMimeType: r.pdfMimeType,
+          pdfSize: r.pdfSize,
+          pdfDownloadUrl:
+            hasPdf && access ? `/api/uploaded-prayers/${r.id}/pdf/download` : null,
           createdAt: r.createdAt,
           isFree,
           access,
@@ -323,6 +330,7 @@ export async function registerRoutes(
     const row = db.select().from(uploadedPrayers).where(eqId(id)).get();
     if (!row) return res.status(404).json({ ok: false, error: "Not found" });
     const isFree = !!row.isFree;
+    const hasPdf = !!row.pdfFilename;
     const userId = req.user?.id ?? null;
     if (!userId) {
       return res.json({
@@ -332,18 +340,23 @@ export async function registerRoutes(
         subscribed: false,
         purchased: false,
         isFree,
+        hasPdf,
+        pdfDownloadUrl: null,
         priceCents: 700,
       });
     }
     const subscribed = await storage.hasActiveSubscription(userId);
     const purchased = await storage.hasPurchasedPrayer(userId, id);
+    const access = isFree || subscribed || purchased;
     res.json({
       ok: true,
       authenticated: true,
-      access: isFree || subscribed || purchased,
+      access,
       subscribed,
       purchased,
       isFree,
+      hasPdf,
+      pdfDownloadUrl: hasPdf && access ? `/api/uploaded-prayers/${id}/pdf/download` : null,
       priceCents: 700,
     });
   });
@@ -361,9 +374,11 @@ export async function registerRoutes(
 
       const fields: Record<string, string> = {};
       let file: ParsedFile | null = null;
+      let pdfFile: ParsedFile | null = null;
       for (const p of parts) {
         if (p.type === "field") fields[p.name] = p.value;
         else if (p.type === "file" && p.name === "audio") file = p;
+        else if (p.type === "file" && p.name === "pdf") pdfFile = p;
       }
 
       const meta = z
@@ -404,6 +419,30 @@ export async function registerRoutes(
       const dest = path.join(UPLOAD_DIR, stored);
       fs.writeFileSync(dest, file.data);
 
+      let pdfStored = "";
+      let pdfOriginal = "";
+      let pdfMime = "";
+      let pdfSize = 0;
+      if (pdfFile && pdfFile.data.length > 0) {
+        const ct = pdfFile.contentType.toLowerCase();
+        const isPdf =
+          ct.includes("application/pdf") ||
+          ct.includes("pdf") ||
+          /\.pdf$/i.test(pdfFile.filename);
+        if (!isPdf) {
+          return res
+            .status(400)
+            .json({ ok: false, error: "PDF companion must be a PDF document" });
+        }
+        const safePdfOriginal = safeFilename(pdfFile.filename || "prayer.pdf");
+        pdfStored = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${safePdfOriginal}`;
+        const pdfDest = path.join(UPLOAD_DIR, pdfStored);
+        fs.writeFileSync(pdfDest, pdfFile.data);
+        pdfOriginal = safePdfOriginal;
+        pdfMime = pdfFile.contentType || "application/pdf";
+        pdfSize = pdfFile.data.length;
+      }
+
       const isFreeFlag = ["true", "on", "1"].includes(String(meta.data.isFree));
       const inserted = db
         .insert(uploadedPrayers)
@@ -423,6 +462,10 @@ export async function registerRoutes(
           audioMimeType: file.contentType || "audio/mpeg",
           audioSize: file.data.length,
           durationSeconds: 0,
+          pdfFilename: pdfStored,
+          pdfOriginalName: pdfOriginal,
+          pdfMimeType: pdfMime,
+          pdfSize,
           isFree: isFreeFlag ? 1 : 0,
           createdAt: new Date().toISOString(),
         })
@@ -449,6 +492,13 @@ export async function registerRoutes(
           audioMimeType: inserted.audioMimeType,
           audioSize: inserted.audioSize,
           durationSeconds: inserted.durationSeconds,
+          hasPdf: !!inserted.pdfFilename,
+          pdfOriginalName: inserted.pdfOriginalName,
+          pdfMimeType: inserted.pdfMimeType,
+          pdfSize: inserted.pdfSize,
+          pdfDownloadUrl: inserted.pdfFilename
+            ? `/api/uploaded-prayers/${inserted.id}/pdf/download`
+            : null,
           isFree: !!inserted.isFree,
           createdAt: inserted.createdAt,
         },
@@ -467,6 +517,10 @@ export async function registerRoutes(
       if (!row) return res.status(404).json({ ok: false, error: "Not found" });
       const filePath = path.join(UPLOAD_DIR, row.audioFilename);
       try { fs.unlinkSync(filePath); } catch {}
+      if (row.pdfFilename) {
+        const pdfPath = path.join(UPLOAD_DIR, row.pdfFilename);
+        try { fs.unlinkSync(pdfPath); } catch {}
+      }
       db.delete(uploadedPrayers).where(eqId(id)).run();
       res.json({ ok: true });
     } catch (err: any) {
@@ -565,6 +619,47 @@ export async function registerRoutes(
     );
     res.setHeader("Cache-Control", "private, no-store");
     fs.createReadStream(filePath).pipe(res);
+  });
+
+  // Protected PDF companion download — same access gate as the audio.
+  app.get("/api/uploaded-prayers/:id/pdf/download", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
+    const row = db.select().from(uploadedPrayers).where(eqId(id)).get();
+    if (!row) return res.status(404).json({ ok: false, error: "Not found" });
+    if (!row.pdfFilename) {
+      return res.status(404).json({ ok: false, error: "No PDF attached" });
+    }
+
+    if (!req.isAdmin) {
+      if (!req.user?.id) {
+        return res.status(401).json({ ok: false, error: "Authentication required" });
+      }
+      const userId = req.user.id;
+      const isFree = !!row.isFree;
+      const subscribed = isFree ? false : await storage.hasActiveSubscription(userId);
+      const purchased = isFree ? false : await storage.hasPurchasedPrayer(userId, id);
+      if (!isFree && !subscribed && !purchased) {
+        return res.status(402).json({
+          ok: false,
+          error: "Payment required",
+          priceCents: 700,
+        });
+      }
+    }
+
+    const pdfPath = path.join(UPLOAD_DIR, row.pdfFilename);
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(404).json({ ok: false, error: "PDF file missing" });
+    }
+    const downloadName = row.pdfOriginalName || `${row.title || "prayer"}.pdf`;
+    res.setHeader("Content-Type", row.pdfMimeType || "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${downloadName.replace(/"/g, "")}"`,
+    );
+    res.setHeader("Cache-Control", "private, no-store");
+    fs.createReadStream(pdfPath).pipe(res);
   });
 
   // ----- User selected prayers -----
