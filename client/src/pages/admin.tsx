@@ -1117,7 +1117,6 @@ export function AdminSettings() {
                 { name: "Stripe", desc: "Payment processing", status: "Configure via STRIPE_SECRET_KEY" },
                 { name: "Resend", desc: "Transactional email", status: "Configure via RESEND_API_KEY" },
                 { name: "AWS S3", desc: "Audio file storage", status: "Configure via S3_* env vars" },
-                { name: "Google OAuth", desc: "Social login", status: "Configure via GOOGLE_CLIENT_ID" },
               ].map((i) => (
                 <div
                   key={i.name}

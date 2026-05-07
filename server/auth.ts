@@ -1,10 +1,10 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import crypto from "node:crypto";
+import { z } from "zod";
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
 
 const SESSION_COOKIE = "hsp_sid";
-const OAUTH_STATE_COOKIE = "hsp_oauth_state";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 type Session = {
@@ -12,7 +12,6 @@ type Session = {
   createdAt: number;
 };
 
-// In-memory session store. Sessions reset on restart — fine for prototype.
 const sessions = new Map<string, Session>();
 
 function newToken(): string {
@@ -44,7 +43,6 @@ function setCookie(
   if (opts.httpOnly !== false) parts.push("HttpOnly");
   parts.push(`SameSite=${opts.sameSite ?? "Lax"}`);
   if (opts.secure) parts.push("Secure");
-  // Append (don't replace) so multiple Set-Cookie headers can stack.
   const prev = res.getHeader("Set-Cookie");
   const next = parts.join("; ");
   if (Array.isArray(prev)) res.setHeader("Set-Cookie", [...prev, next]);
@@ -61,21 +59,47 @@ function isHttps(req: Request): boolean {
   return proto === "https";
 }
 
-function resolveBaseUrl(req: Request): string {
-  const envBase = (process.env.BASE_URL || "").replace(/\/+$/, "");
-  if (envBase) return envBase;
-  const origin = (req.headers.origin || "").toString().replace(/\/+$/, "");
-  if (origin && /^https?:\/\//i.test(origin)) return origin;
-  const proto = (req.headers["x-forwarded-proto"] || req.protocol || "http").toString().split(",")[0].trim();
-  const host = (req.headers["x-forwarded-host"] || req.headers.host || "").toString().split(",")[0].trim();
-  if (host) return `${proto}://${host}`;
-  return "http://localhost:5000";
+const SCRYPT_KEYLEN = 64;
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16);
+  const derived = crypto.scryptSync(password, salt, SCRYPT_KEYLEN);
+  return `scrypt$${salt.toString("hex")}$${derived.toString("hex")}`;
 }
 
-function googleRedirectUri(req: Request): string {
-  const explicit = (process.env.GOOGLE_REDIRECT_URI || "").trim();
-  if (explicit) return explicit;
-  return `${resolveBaseUrl(req)}/api/auth/google/callback`;
+function verifyPassword(password: string, stored: string): boolean {
+  if (!stored || !stored.startsWith("scrypt$")) return false;
+  const [, saltHex, hashHex] = stored.split("$");
+  if (!saltHex || !hashHex) return false;
+  try {
+    const salt = Buffer.from(saltHex, "hex");
+    const expected = Buffer.from(hashHex, "hex");
+    const derived = crypto.scryptSync(password, salt, expected.length);
+    return crypto.timingSafeEqual(derived, expected);
+  } catch {
+    return false;
+  }
+}
+
+function issueSession(res: Response, req: Request, userId: number) {
+  const sid = newToken();
+  sessions.set(sid, { userId, createdAt: Date.now() });
+  setCookie(res, SESSION_COOKIE, sid, {
+    maxAgeMs: SESSION_TTL_MS,
+    httpOnly: true,
+    sameSite: "Lax",
+    secure: isHttps(req),
+  });
+}
+
+function publicUser(u: User) {
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    pictureUrl: u.pictureUrl,
+    username: u.username,
+  };
 }
 
 declare module "express-serve-static-core" {
@@ -110,21 +134,70 @@ export function attachSessionMiddleware(app: Express) {
   });
 }
 
+const registerSchema = z.object({
+  name: z.string().min(1).max(120).optional().default(""),
+  email: z.string().email().max(254),
+  password: z.string().min(6).max(200),
+});
+
+const loginSchema = z.object({
+  email: z.string().email().max(254),
+  password: z.string().min(1).max(200),
+});
+
 export function registerAuthRoutes(app: Express) {
   // Current user
   app.get("/api/auth/me", (req, res) => {
     if (!req.user) return res.status(200).json({ ok: true, user: null });
-    const u = req.user;
-    res.json({
-      ok: true,
-      user: {
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        pictureUrl: u.pictureUrl,
-        username: u.username,
-      },
+    res.json({ ok: true, user: publicUser(req.user) });
+  });
+
+  // Register a new account
+  app.post("/api/auth/register", async (req, res) => {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        error: "Please enter a valid email and a password of at least 6 characters.",
+      });
+    }
+    const email = parsed.data.email.trim().toLowerCase();
+    const name = parsed.data.name.trim();
+
+    const existing = await storage.getUserByEmail(email);
+    if (existing) {
+      return res
+        .status(409)
+        .json({ ok: false, error: "An account with that email already exists." });
+    }
+
+    const passwordHash = hashPassword(parsed.data.password);
+    const user = await storage.createLocalUser({
+      email,
+      name: name || email.split("@")[0],
+      passwordHash,
     });
+
+    issueSession(res, req, user.id);
+    res.json({ ok: true, user: publicUser(user) });
+  });
+
+  // Log in with email + password
+  app.post("/api/auth/login", async (req, res) => {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: "Email and password are required." });
+    }
+    const email = parsed.data.email.trim().toLowerCase();
+    const user = await storage.getUserByEmail(email);
+    if (!user || !verifyPassword(parsed.data.password, user.password)) {
+      return res
+        .status(401)
+        .json({ ok: false, error: "Email or password is incorrect." });
+    }
+
+    issueSession(res, req, user.id);
+    res.json({ ok: true, user: publicUser(user) });
   });
 
   // Logout
@@ -132,116 +205,5 @@ export function registerAuthRoutes(app: Express) {
     if (req.sessionId) sessions.delete(req.sessionId);
     clearCookie(res, SESSION_COOKIE);
     res.json({ ok: true });
-  });
-
-  // Google OAuth — start
-  app.get("/api/auth/google/start", (req, res) => {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      return res.status(503).json({
-        ok: false,
-        error:
-          "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server environment.",
-      });
-    }
-    const state = newToken();
-    setCookie(res, OAUTH_STATE_COOKIE, state, {
-      maxAgeMs: 1000 * 60 * 10,
-      httpOnly: true,
-      sameSite: "Lax",
-      secure: isHttps(req),
-    });
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: clientId,
-      redirect_uri: googleRedirectUri(req),
-      scope: "openid email profile",
-      access_type: "online",
-      include_granted_scopes: "true",
-      prompt: "select_account",
-      state,
-    });
-    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
-  });
-
-  // Google OAuth — callback
-  app.get("/api/auth/google/callback", async (req, res) => {
-    try {
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      if (!clientId || !clientSecret) {
-        return res.status(503).send("Google OAuth is not configured.");
-      }
-
-      const code = (req.query.code as string | undefined) || "";
-      const stateParam = (req.query.state as string | undefined) || "";
-      const cookies = parseCookies(req.headers.cookie);
-      const stateCookie = cookies[OAUTH_STATE_COOKIE];
-      clearCookie(res, OAUTH_STATE_COOKIE);
-
-      if (!code || !stateParam || !stateCookie || stateParam !== stateCookie) {
-        return res.status(400).send("Invalid OAuth state");
-      }
-
-      const tokenParams = new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: googleRedirectUri(req),
-        grant_type: "authorization_code",
-      });
-
-      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: tokenParams.toString(),
-      });
-      const tokenJson = (await tokenRes.json()) as {
-        access_token?: string;
-        id_token?: string;
-        error?: string;
-        error_description?: string;
-      };
-      if (!tokenRes.ok || !tokenJson.access_token) {
-        return res
-          .status(502)
-          .send(`Google token exchange failed: ${tokenJson.error_description || tokenJson.error || "unknown"}`);
-      }
-
-      const profileRes = await fetch(
-        "https://openidconnect.googleapis.com/v1/userinfo",
-        { headers: { Authorization: `Bearer ${tokenJson.access_token}` } },
-      );
-      const profile = (await profileRes.json()) as {
-        sub?: string;
-        email?: string;
-        name?: string;
-        picture?: string;
-      };
-      if (!profile.sub || !profile.email) {
-        return res.status(502).send("Google profile fetch failed");
-      }
-
-      const user = await storage.upsertGoogleUser({
-        googleId: profile.sub,
-        email: profile.email,
-        name: profile.name || profile.email,
-        pictureUrl: profile.picture,
-      });
-
-      const sid = newToken();
-      sessions.set(sid, { userId: user.id, createdAt: Date.now() });
-      setCookie(res, SESSION_COOKIE, sid, {
-        maxAgeMs: SESSION_TTL_MS,
-        httpOnly: true,
-        sameSite: "Lax",
-        secure: isHttps(req),
-      });
-
-      const baseUrl = resolveBaseUrl(req);
-      res.redirect(`${baseUrl}/#/account?login=success`);
-    } catch (err: any) {
-      res.status(500).send(`OAuth callback error: ${err?.message || "unknown"}`);
-    }
   });
 }

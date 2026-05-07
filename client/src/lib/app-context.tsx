@@ -28,9 +28,8 @@ export function useTheme() {
 }
 
 // ========== AUTH ==========
-// Two flavors of auth coexist while we transition:
-// - Server session (Google OAuth) populates `serverUser` via /api/auth/me
-// - In-memory demo signIn/signUp continues to power the legacy dashboard preview
+// `serverUser` is the authoritative server-session identity (email + password).
+// `user` mirrors it for legacy dashboard/admin views, with a derived role.
 type AuthUser = {
   id: string;
   name: string;
@@ -48,63 +47,93 @@ type AuthContextValue = {
   user: AuthUser | null;
   serverUser: ServerUser | null;
   loading: boolean;
-  signIn: (email: string) => void;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
-  signUp: (name: string, email: string) => void;
+  signUp: (name: string, email: string, password: string) => Promise<void>;
   refreshServerUser: () => Promise<void>;
   // demo only — toggles between user & admin
   switchRole: (role: "user" | "admin") => void;
 };
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function deriveRole(email: string | null | undefined): "user" | "admin" {
+  return (email || "").toLowerCase().startsWith("admin") ? "admin" : "user";
+}
+
+function toAuthUser(srv: ServerUser): AuthUser {
+  return {
+    id: `srv-${srv.id}`,
+    name: srv.name || srv.email || "Friend",
+    email: srv.email || "",
+    role: deriveRole(srv.email),
+  };
+}
+
+async function readError(res: Response): Promise<string> {
+  try {
+    const json = await res.json();
+    if (json && typeof json.error === "string") return json.error;
+  } catch {}
+  return `${res.status} ${res.statusText}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [serverUser, setServerUser] = useState<ServerUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const applyServerUser = useCallback((srv: ServerUser | null) => {
+    setServerUser(srv);
+    setUser(srv ? toAuthUser(srv) : null);
+  }, []);
+
   const refreshServerUser = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/me", { credentials: "include" });
       if (!res.ok) {
-        setServerUser(null);
+        applyServerUser(null);
         return;
       }
       const json = (await res.json()) as { ok: boolean; user: ServerUser | null };
-      setServerUser(json.user);
-      if (json.user) {
-        setUser({
-          id: `srv-${json.user.id}`,
-          name: json.user.name || json.user.email || "Friend",
-          email: json.user.email || "",
-          role: "user",
-        });
-      }
+      applyServerUser(json.user);
     } catch {
-      setServerUser(null);
+      applyServerUser(null);
     }
-  }, []);
+  }, [applyServerUser]);
 
   useEffect(() => {
     refreshServerUser().finally(() => setLoading(false));
   }, [refreshServerUser]);
 
-  const signIn = useCallback((email: string) => {
-    const role = email.toLowerCase().startsWith("admin") ? "admin" : "user";
-    setUser({
-      id: role === "admin" ? "u11" : "u-demo",
-      name: role === "admin" ? "Admin" : demoUser.name,
-      email,
-      role,
+  const signIn = useCallback(async (email: string, password: string) => {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
     });
-  }, []);
-  const signUp = useCallback((name: string, email: string) => {
-    setUser({ id: "u-new", name, email, role: "user" });
-  }, []);
+    if (!res.ok) throw new Error(await readError(res));
+    const json = (await res.json()) as { ok: boolean; user: ServerUser };
+    applyServerUser(json.user);
+  }, [applyServerUser]);
+
+  const signUp = useCallback(async (name: string, email: string, password: string) => {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ name, email, password }),
+    });
+    if (!res.ok) throw new Error(await readError(res));
+    const json = (await res.json()) as { ok: boolean; user: ServerUser };
+    applyServerUser(json.user);
+  }, [applyServerUser]);
+
   const signOut = useCallback(() => {
     fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
-    setServerUser(null);
-    setUser(null);
-  }, []);
+    applyServerUser(null);
+  }, [applyServerUser]);
+
   const switchRole = useCallback((role: "user" | "admin") => {
     setUser((u) => (u ? { ...u, role } : { id: role === "admin" ? "u11" : "u-demo", name: role === "admin" ? "Admin" : demoUser.name, email: role === "admin" ? "admin@holyspiritprayers.com" : demoUser.email, role }));
   }, []);

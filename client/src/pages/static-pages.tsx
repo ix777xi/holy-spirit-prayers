@@ -159,7 +159,7 @@ export function LegalPage() {
         </Section>
 
         <Section title="Privacy Policy">
-          <p>We collect the minimum required to operate: account email, purchase history, and prayer interactions. We use Stripe for payment processing and Google for optional sign-in; we do not sell your personal data. You may request export or deletion at any time.</p>
+          <p>We collect the minimum required to operate: account email, password (stored only as a salted hash), purchase history, and prayer interactions. We use Stripe for payment processing; we do not sell your personal data. You may request export or deletion at any time.</p>
         </Section>
 
         <Section title="Refund Policy">

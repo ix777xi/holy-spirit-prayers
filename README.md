@@ -56,9 +56,6 @@ Add the following in **Railway → Variables**. None of these are required for t
 | `STRIPE_SECRET_KEY`       | Stripe server key (`sk_live_...` or `sk_test_...`)      | Future                 |
 | `STRIPE_WEBHOOK_SECRET`   | Webhook signing secret for `/api/stripe/webhook`        | Future                 |
 | `STRIPE_PUBLISHABLE_KEY`  | Stripe public key (frontend, prefix `VITE_`)            | Future                 |
-| `GOOGLE_CLIENT_ID`        | OAuth client ID for Google sign-in (see *Google sign-in setup* below) | Yes (for login)        |
-| `GOOGLE_CLIENT_SECRET`    | OAuth client secret                                     | Yes (for login)        |
-| `GOOGLE_REDIRECT_URI`     | Override the OAuth callback URL. Falls back to `<BASE_URL>/api/auth/google/callback`. | Optional |
 | `SESSION_SECRET`          | Reserved for future signed-cookie/JWT session work      | Optional               |
 | `RESEND_API_KEY`          | Transactional email (or `SENDGRID_API_KEY`)             | Future                 |
 | `EMAIL_FROM`              | e.g. `prayers@holyspiritprayers.app`                    | Future                 |
@@ -139,8 +136,8 @@ Admin: `/#/admin`, `/#/admin/prayers`, `/#/admin/categories`,
 | DELETE | `/api/uploaded-prayers/:id`                    | Delete an uploaded prayer                     |
 | POST   | `/api/create-subscription-checkout-session`    | Start a $27/month Stripe Checkout subscription|
 | POST   | `/api/stripe/webhook`                          | Stripe webhook stub                           |
-| GET    | `/api/auth/google/start`                       | Begin Google OAuth flow (redirects to Google) |
-| GET    | `/api/auth/google/callback`                    | OAuth callback — sets `hsp_sid` httpOnly cookie |
+| POST   | `/api/auth/register`                           | Create an account (email + password) and start a session |
+| POST   | `/api/auth/login`                              | Log in with email + password — sets `hsp_sid` httpOnly cookie |
 | GET    | `/api/auth/me`                                 | Current logged-in user (or `null`)            |
 | POST   | `/api/auth/logout`                             | Clear session cookie                          |
 | GET    | `/api/me/prayers`                              | List the signed-in user's saved prayers       |
@@ -149,37 +146,24 @@ Admin: `/#/admin`, `/#/admin/prayers`, `/#/admin/categories`,
 | POST   | `/api/me/prayers/:id/download`                 | Record a download event                       |
 | DELETE | `/api/me/prayers/:id`                          | Remove a saved prayer                         |
 
-### Google sign-in setup
+### Sign-in setup
 
-The Login page and Account page both kick the browser over to
-`/api/auth/google/start`, which redirects to Google with the OAuth 2.0
-authorization-code flow. After consent, Google redirects to
-`/api/auth/google/callback`, the server exchanges the code for tokens, fetches
-the user's profile, upserts a row in the `users` table, and sets an httpOnly
-session cookie (`hsp_sid`) before redirecting to `/#/account?login=success`.
-
-To enable it:
-
-1. Open <https://console.cloud.google.com/apis/credentials> and create an
-   **OAuth 2.0 Client ID** of type *Web application*.
-2. Add an **Authorized redirect URI** that matches your environment, e.g.
-   - Local dev: `http://localhost:5000/api/auth/google/callback`
-   - Production: `https://your-app.up.railway.app/api/auth/google/callback`
-3. Copy the Client ID and Client Secret into `GOOGLE_CLIENT_ID` and
-   `GOOGLE_CLIENT_SECRET` (locally in `.env`, in production via Railway →
-   Variables).
-4. Optionally set `BASE_URL` to your public origin so the server can derive the
-   redirect URI consistently across environments. If you need to override the
-   callback path entirely, set `GOOGLE_REDIRECT_URI` instead.
-
-If `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are not set, the start endpoint
-returns a `503` with a clear error message — the rest of the app continues to
-work without auth.
+Authentication is **email + password**, no third-party providers. On
+`POST /api/auth/register` the server validates the email/password (min. 6
+characters), salts and hashes the password with Node's built-in `scrypt`,
+inserts a row in the `users` table, and sets an httpOnly session cookie
+(`hsp_sid`). `POST /api/auth/login` looks up the user by email, verifies the
+hash with `crypto.timingSafeEqual`, and issues the same cookie. There is no
+external configuration required to enable sign-in — it works as soon as the
+server is running.
 
 The current session store is **in-memory**, so sessions reset whenever the
 server process restarts (this is fine for a prototype). The cookie is
 `HttpOnly`, `SameSite=Lax`, and is set with `Secure` automatically when the
 request arrives over HTTPS (e.g. behind Railway's TLS).
+
+> Demo tip: register with an email starting with `admin` (e.g.
+> `admin@local.dev`) to get the admin role and reach `/#/admin` after sign-in.
 
 ### Stripe subscription setup
 
@@ -227,7 +211,7 @@ The current `routes.ts` uses an **in-memory store** that resets on restart. That
 | Feature                 | Status                                                              |
 | ----------------------- | ------------------------------------------------------------------- |
 | Stripe checkout         | Stub — purchase button mocks completion                             |
-| Google OAuth            | Live — see *Google sign-in setup* (requires env vars)               |
+| Authentication          | Live — email + password (scrypt-hashed) with in-memory sessions      |
 | Audio playback          | Simulated 1-Hz progress timer                                       |
 | Email delivery          | Logs to memory; wire Resend/SendGrid in `server/routes.ts`          |
 | Auth persistence        | In-memory; reset on refresh (no storage allowed in iframe sandbox)  |

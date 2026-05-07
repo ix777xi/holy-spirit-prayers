@@ -24,24 +24,6 @@ type UserPrayer = {
   downloadCount: number;
 };
 
-function GoogleSignInButton({ label }: { label: string }) {
-  return (
-    <a
-      href="/api/auth/google/start"
-      className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm font-medium hover-elevate flex items-center justify-center gap-3"
-      data-testid="button-google-signin"
-    >
-      <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
-        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.5-5.9 8-11.3 8a12 12 0 1 1 0-24 12 12 0 0 1 8.5 3.5l5.7-5.7A20 20 0 0 0 24 4a20 20 0 0 0 0 40c10 0 19-7.3 19-20 0-1.4-.1-2.4-.4-3.5z" />
-        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8A12 12 0 0 1 24 12a12 12 0 0 1 8.5 3.5l5.7-5.7A20 20 0 0 0 6.3 14.7z" />
-        <path fill="#4CAF50" d="M24 44c5.4 0 10.3-2 13.9-5.5l-6.4-5.4A12 12 0 0 1 24 36c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5C9.5 39.6 16.2 44 24 44z" />
-        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.4 5.4C41.4 36 44 31 44 25c0-1.6-.2-3-.4-4.5z" />
-      </svg>
-      {label}
-    </a>
-  );
-}
-
 function StarRating({ value, onChange, testId }: { value: number; onChange: (v: number) => void; testId: string }) {
   return (
     <div className="inline-flex items-center gap-1" role="radiogroup" aria-label="Rate this prayer">
@@ -74,14 +56,27 @@ function SignedOutPrompt() {
         <div className="flex justify-center mb-5"><LogoMark size={56} /></div>
         <h1 className="headline text-3xl mb-2" data-testid="text-account-signin-title">Welcome, friend.</h1>
         <p className="text-muted-foreground mb-8">
-          Sign in with Google to save the prayers that meet you, keep your history,
-          rate them, and share what stirred your heart.
+          Sign in or create a free account to save the prayers that meet you,
+          keep your history, rate them, and share what stirred your heart.
         </p>
-        <div className="space-y-3">
-          <GoogleSignInButton label="Continue with Google" />
-          <p className="text-xs text-muted-foreground">
-            We use Google sign-in only to identify your account.
-          </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link href="/login" className="flex-1">
+            <Button
+              variant="outline"
+              className="w-full"
+              data-testid="button-account-login"
+            >
+              Log in
+            </Button>
+          </Link>
+          <Link href="/register" className="flex-1">
+            <Button
+              className="w-full bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold"
+              data-testid="button-account-register"
+            >
+              Create account
+            </Button>
+          </Link>
         </div>
         <div className="mt-8 text-sm">
           <Link href="/library" className="text-brand-gold hover:underline">Browse the prayer library →</Link>

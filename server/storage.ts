@@ -13,7 +13,6 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL DEFAULT '',
-    google_id TEXT,
     email TEXT,
     name TEXT,
     picture_url TEXT,
@@ -54,7 +53,6 @@ sqlite.exec(`
 function tryAddColumn(sql: string) {
   try { sqlite.exec(sql); } catch { /* ignore: column already exists */ }
 }
-tryAddColumn(`ALTER TABLE users ADD COLUMN google_id TEXT;`);
 tryAddColumn(`ALTER TABLE users ADD COLUMN email TEXT;`);
 tryAddColumn(`ALTER TABLE users ADD COLUMN name TEXT;`);
 tryAddColumn(`ALTER TABLE users ADD COLUMN picture_url TEXT;`);
@@ -65,13 +63,12 @@ export const db = drizzle(sqlite);
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  upsertGoogleUser(profile: {
-    googleId: string;
+  createLocalUser(input: {
     email: string;
     name: string;
-    pictureUrl?: string;
+    passwordHash: string;
   }): Promise<User>;
   listUserPrayers(userId: number): Promise<UserPrayer[]>;
   getUserPrayer(userId: number, source: string, prayerKey: string): Promise<UserPrayer | undefined>;
@@ -102,35 +99,20 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users).where(eq(users.username, username)).get();
   }
 
-  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
-    return db.select().from(users).where(eq(users.googleId, googleId)).get();
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return db.select().from(users).where(eq(users.email, email)).get();
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     return db.insert(users).values(insertUser).returning().get();
   }
 
-  async upsertGoogleUser(profile: {
-    googleId: string;
+  async createLocalUser(input: {
     email: string;
     name: string;
-    pictureUrl?: string;
+    passwordHash: string;
   }): Promise<User> {
-    const existing = await this.getUserByGoogleId(profile.googleId);
-    if (existing) {
-      const updated = db
-        .update(users)
-        .set({
-          email: profile.email,
-          name: profile.name,
-          pictureUrl: profile.pictureUrl ?? existing.pictureUrl ?? null,
-        })
-        .where(eq(users.id, existing.id))
-        .returning()
-        .get();
-      return updated ?? existing;
-    }
-    const baseUsername = (profile.email || `google_${profile.googleId}`).toLowerCase();
+    const baseUsername = input.email.toLowerCase();
     let username = baseUsername;
     let suffix = 0;
     while (await this.getUserByUsername(username)) {
@@ -141,11 +123,10 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values({
         username,
-        password: "",
-        googleId: profile.googleId,
-        email: profile.email,
-        name: profile.name,
-        pictureUrl: profile.pictureUrl ?? null,
+        password: input.passwordHash,
+        email: input.email,
+        name: input.name,
+        pictureUrl: null,
         createdAt: new Date().toISOString(),
       })
       .returning()

@@ -13,11 +13,10 @@ type Tab = "prayers" | "requests" | "favorites" | "settings";
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("prayers");
-  const { user, signIn } = useAuth();
+  const { user } = useAuth();
   const { ownedSlugs, favorites, toggleFavorite } = usePlayer();
   const { toast } = useToast();
 
-  // Auto-fill demo user if not signed in for easier preview
   if (!user) {
     return (
       <PageShell>
@@ -28,13 +27,14 @@ export default function DashboardPage() {
           </p>
           <div className="flex justify-center gap-3">
             <Link href="/login"><Button variant="outline" data-testid="button-dashboard-login">Log in</Button></Link>
-            <Button
-              onClick={() => signIn(demoUser.email)}
-              className="bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold"
-              data-testid="button-dashboard-demo"
-            >
-              Continue as demo user
-            </Button>
+            <Link href="/register">
+              <Button
+                className="bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold"
+                data-testid="button-dashboard-register"
+              >
+                Create an account
+              </Button>
+            </Link>
           </div>
         </div>
       </PageShell>
