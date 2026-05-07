@@ -169,7 +169,6 @@ export default function HomePage() {
             testId="howitworks-card-listen"
             href="/free-prayer"
             icon={<Headphones className="h-6 w-6" />}
-            kicker="Step 1"
             title="Listen"
             body="Open a free, Spirit-led prayer narrated with calm intention — perfect for morning, night, or any quiet moment."
             cta="Hear today's prayer"
@@ -178,7 +177,6 @@ export default function HomePage() {
             testId="howitworks-card-download"
             href="/library"
             icon={<Download className="h-6 w-6" />}
-            kicker="Step 2"
             title="Download"
             body="Browse 18+ prayers across 24 themes. Purchase any prayer for $7 and keep the audio, transcript, and meditation guide."
             cta="Visit the library"
@@ -187,7 +185,6 @@ export default function HomePage() {
             testId="howitworks-card-request"
             href="/custom-prayer"
             icon={<Heart className="h-6 w-6" />}
-            kicker="Step 3"
             title="Request"
             body="Tell us your situation and a personalized prayer is hand-crafted for you ($10), delivered within 24–48 hours."
             cta="Request a prayer"
@@ -268,7 +265,6 @@ function HowCard({
   testId,
   href,
   icon,
-  kicker,
   title,
   body,
   cta,
@@ -276,7 +272,6 @@ function HowCard({
   testId: string;
   href: string;
   icon: React.ReactNode;
-  kicker: string;
   title: string;
   body: string;
   cta: string;
@@ -289,9 +284,6 @@ function HowCard({
     >
       <div className="w-14 h-14 rounded-full bg-brand-navy text-brand-gold inline-flex items-center justify-center mb-5 ring-1 ring-brand-gold/40 group-hover:ring-brand-gold transition-colors">
         {icon}
-      </div>
-      <div className="text-[11px] uppercase tracking-[0.28em] text-brand-gold mb-2 font-sans font-medium">
-        {kicker}
       </div>
       <h3
         className="text-2xl font-semibold mb-3 tracking-tight"
