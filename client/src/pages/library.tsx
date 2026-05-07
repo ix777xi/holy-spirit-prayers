@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ChevronRight, Filter, X, Download, Music } from "lucide-react";
+import { Search, ChevronRight, Filter, X, Download, Music, BookmarkPlus } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { PrayerCard } from "@/components/brand/PrayerCard";
 import { SectionDivider } from "@/components/brand/SectionDivider";
 import { Button } from "@/components/ui/button";
 import { categories, prayers, durationBucket } from "@/lib/data";
+import { useAuth } from "@/lib/app-context";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type UploadedPrayerItem = {
   id: number;
@@ -255,6 +258,35 @@ export default function LibraryPage() {
 
 function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
   const cat = categories.find((c) => c.slug === item.categorySlug);
+  const { serverUser } = useAuth();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const [saving, setSaving] = useState(false);
+
+  async function saveToAccount() {
+    if (!serverUser) {
+      navigate("/account");
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiRequest("POST", "/api/me/prayers", {
+        source: "uploaded",
+        prayerKey: String(item.id),
+        title: item.title,
+        categorySlug: item.categorySlug,
+        description: item.description,
+        audioUrl: item.audioUrl,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/prayers"] });
+      toast({ title: "Saved", description: "Added to your account." });
+    } catch (err: any) {
+      toast({ title: "Could not save", description: err?.message || "Try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <article
       className="rounded-xl border border-card-border bg-card p-4 flex flex-col gap-3"
@@ -287,7 +319,16 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
         className="w-full h-9"
         data-testid={`audio-library-uploaded-${item.id}`}
       />
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex items-center justify-between pt-1 gap-2">
+        <button
+          type="button"
+          onClick={saveToAccount}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold disabled:opacity-50"
+          data-testid={`button-save-uploaded-${item.id}`}
+        >
+          <BookmarkPlus className="h-4 w-4" /> {serverUser ? "Save to account" : "Sign in to save"}
+        </button>
         <a
           href={item.audioUrl}
           download={item.audioOriginalName || `${item.title}.mp3`}

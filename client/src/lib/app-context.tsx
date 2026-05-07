@@ -27,18 +27,31 @@ export function useTheme() {
   return v;
 }
 
-// ========== AUTH (demo, in-memory) ==========
+// ========== AUTH ==========
+// Two flavors of auth coexist while we transition:
+// - Server session (Google OAuth) populates `serverUser` via /api/auth/me
+// - In-memory demo signIn/signUp continues to power the legacy dashboard preview
 type AuthUser = {
   id: string;
   name: string;
   email: string;
   role: "user" | "admin";
 };
+type ServerUser = {
+  id: number;
+  email: string | null;
+  name: string | null;
+  pictureUrl: string | null;
+  username: string;
+};
 type AuthContextValue = {
   user: AuthUser | null;
+  serverUser: ServerUser | null;
+  loading: boolean;
   signIn: (email: string) => void;
   signOut: () => void;
   signUp: (name: string, email: string) => void;
+  refreshServerUser: () => Promise<void>;
   // demo only — toggles between user & admin
   switchRole: (role: "user" | "admin") => void;
 };
@@ -46,6 +59,34 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [serverUser, setServerUser] = useState<ServerUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const refreshServerUser = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (!res.ok) {
+        setServerUser(null);
+        return;
+      }
+      const json = (await res.json()) as { ok: boolean; user: ServerUser | null };
+      setServerUser(json.user);
+      if (json.user) {
+        setUser({
+          id: `srv-${json.user.id}`,
+          name: json.user.name || json.user.email || "Friend",
+          email: json.user.email || "",
+          role: "user",
+        });
+      }
+    } catch {
+      setServerUser(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshServerUser().finally(() => setLoading(false));
+  }, [refreshServerUser]);
 
   const signIn = useCallback((email: string) => {
     const role = email.toLowerCase().startsWith("admin") ? "admin" : "user";
@@ -59,12 +100,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback((name: string, email: string) => {
     setUser({ id: "u-new", name, email, role: "user" });
   }, []);
-  const signOut = useCallback(() => setUser(null), []);
+  const signOut = useCallback(() => {
+    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    setServerUser(null);
+    setUser(null);
+  }, []);
   const switchRole = useCallback((role: "user" | "admin") => {
     setUser((u) => (u ? { ...u, role } : { id: role === "admin" ? "u11" : "u-demo", name: role === "admin" ? "Admin" : demoUser.name, email: role === "admin" ? "admin@holyspiritprayers.com" : demoUser.email, role }));
   }, []);
 
-  const value = useMemo(() => ({ user, signIn, signOut, signUp, switchRole }), [user, signIn, signOut, signUp, switchRole]);
+  const value = useMemo(
+    () => ({ user, serverUser, loading, signIn, signOut, signUp, switchRole, refreshServerUser }),
+    [user, serverUser, loading, signIn, signOut, signUp, switchRole, refreshServerUser],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useAuth() {

@@ -1,13 +1,45 @@
-import { Link } from "wouter";
-import { Play, Heart, Clock } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Play, Heart, Clock, BookmarkPlus } from "lucide-react";
 import { Prayer, formatDuration, getCategoryBySlug } from "@/lib/data";
 import { PrayerArt } from "./PrayerArt";
-import { usePlayer } from "@/lib/app-context";
+import { useAuth, usePlayer } from "@/lib/app-context";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export function PrayerCard({ prayer, compact = false }: { prayer: Prayer; compact?: boolean }) {
   const { play, toggleFavorite, isFavorite } = usePlayer();
+  const { serverUser } = useAuth();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const [saving, setSaving] = useState(false);
   const category = getCategoryBySlug(prayer.categorySlug);
   const fav = isFavorite(prayer.slug);
+
+  async function saveToAccount(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!serverUser) {
+      navigate("/account");
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiRequest("POST", "/api/me/prayers", {
+        source: "seed",
+        prayerKey: prayer.slug,
+        title: prayer.title,
+        categorySlug: prayer.categorySlug,
+        description: prayer.description,
+        audioUrl: "",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/prayers"] });
+      toast({ title: "Saved", description: "Added to your account." });
+    } catch (err: any) {
+      toast({ title: "Could not save", description: err?.message || "Try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <article
@@ -23,6 +55,16 @@ export function PrayerCard({ prayer, compact = false }: { prayer: Prayer; compac
           data-testid={`button-preview-${prayer.slug}`}
         >
           <Play className="h-4 w-4" fill="currentColor" />
+        </button>
+
+        <button
+          onClick={saveToAccount}
+          disabled={saving}
+          aria-label="Save to my account"
+          data-testid={`button-save-account-${prayer.slug}`}
+          className="absolute bottom-3 left-3 rounded-full p-2 backdrop-blur-md bg-white/15 text-white hover:bg-white/25 disabled:opacity-50"
+        >
+          <BookmarkPlus className="h-4 w-4" />
         </button>
 
         <button

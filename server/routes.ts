@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import { storage, db } from "./storage";
 import { uploadedPrayers } from "@shared/schema";
 import { desc, eq } from "drizzle-orm";
+import { attachSessionMiddleware, registerAuthRoutes, requireAuth } from "./auth";
 
 /* ----- Validation schemas ----- */
 
@@ -160,6 +161,9 @@ export async function registerRoutes(
   app: Express,
 ): Promise<Server> {
   ensureUploadDir();
+
+  attachSessionMiddleware(app);
+  registerAuthRoutes(app);
 
   // Health
   app.get("/api/health", (_req, res) => {
@@ -366,6 +370,67 @@ export async function registerRoutes(
 
   // Serve uploaded files
   app.use("/uploads", express.static(UPLOAD_DIR, { maxAge: "1d", fallthrough: true }));
+
+  // ----- User selected prayers -----
+
+  const selectPrayerSchema = z.object({
+    source: z.enum(["seed", "uploaded"]),
+    prayerKey: z.string().min(1).max(200),
+    title: z.string().min(1).max(300),
+    categorySlug: z.string().max(120).optional().default(""),
+    description: z.string().max(2000).optional().default(""),
+    audioUrl: z.string().max(500).optional().default(""),
+  });
+
+  app.get("/api/me/prayers", requireAuth, async (req, res) => {
+    const items = await storage.listUserPrayers(req.user!.id);
+    res.json({ ok: true, items });
+  });
+
+  app.post("/api/me/prayers", requireAuth, async (req, res) => {
+    const parsed = selectPrayerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: "Invalid input", issues: parsed.error.issues });
+    }
+    const item = await storage.upsertUserPrayer({
+      userId: req.user!.id,
+      ...parsed.data,
+    });
+    res.json({ ok: true, item });
+  });
+
+  const updatePrayerSchema = z.object({
+    rating: z.number().int().min(0).max(5).optional(),
+    feedback: z.string().max(4000).optional(),
+  });
+
+  app.patch("/api/me/prayers/:id", requireAuth, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
+    const parsed = updatePrayerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: "Invalid input", issues: parsed.error.issues });
+    }
+    const updated = await storage.updateUserPrayer(req.user!.id, id, parsed.data);
+    if (!updated) return res.status(404).json({ ok: false, error: "Not found" });
+    res.json({ ok: true, item: updated });
+  });
+
+  app.post("/api/me/prayers/:id/download", requireAuth, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
+    const updated = await storage.recordDownload(req.user!.id, id);
+    if (!updated) return res.status(404).json({ ok: false, error: "Not found" });
+    res.json({ ok: true, item: updated });
+  });
+
+  app.delete("/api/me/prayers/:id", requireAuth, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
+    const ok = await storage.deleteUserPrayer(req.user!.id, id);
+    if (!ok) return res.status(404).json({ ok: false, error: "Not found" });
+    res.json({ ok: true });
+  });
 
   // Stripe webhook placeholder (no signature verification stub)
   app.post("/api/stripe/webhook", async (_req, res) => {

@@ -33,11 +33,10 @@ function AuthShell({ title, subtitle, children, footer }: { title: string; subti
 
 function GoogleButton({ label }: { label: string }) {
   return (
-    <button
-      type="button"
+    <a
+      href="/api/auth/google/start"
       className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm font-medium hover-elevate flex items-center justify-center gap-3"
       data-testid="button-google"
-      onClick={() => alert("Google OAuth is stubbed in this preview.")}
     >
       <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.5-5.9 8-11.3 8a12 12 0 1 1 0-24 12 12 0 0 1 8.5 3.5l5.7-5.7A20 20 0 0 0 24 4a20 20 0 0 0 0 40c10 0 19-7.3 19-20 0-1.4-.1-2.4-.4-3.5z" />
@@ -46,7 +45,7 @@ function GoogleButton({ label }: { label: string }) {
         <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.4 5.4C41.4 36 44 31 44 25c0-1.6-.2-3-.4-4.5z" />
       </svg>
       {label}
-    </button>
+    </a>
   );
 }
 

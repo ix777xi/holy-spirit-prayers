@@ -13,6 +13,7 @@ import PrayerDetailPage from "@/pages/prayer-detail";
 import CustomPrayerPage, { CustomPrayerSuccessPage } from "@/pages/custom-prayer";
 import FreePrayerPage from "@/pages/free-prayer";
 import DashboardPage from "@/pages/dashboard";
+import AccountPage from "@/pages/account";
 import {
   LoginPage,
   RegisterPage,
@@ -45,6 +46,7 @@ function AppRouter() {
       <Route path="/custom-prayer/success" component={CustomPrayerSuccessPage} />
       <Route path="/free-prayer" component={FreePrayerPage} />
       <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/account" component={AccountPage} />
 
       {/* Auth pages */}
       <Route path="/login" component={LoginPage} />

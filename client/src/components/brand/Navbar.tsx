@@ -15,7 +15,7 @@ export function Navbar() {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
   const { theme, toggle } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, serverUser, signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-brand-gold/30 bg-[hsl(var(--background))]/92 backdrop-blur supports-[backdrop-filter]:bg-[hsl(var(--background))]/80">
@@ -54,13 +54,21 @@ export function Navbar() {
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
 
-          {user ? (
+          {user || serverUser ? (
             <div className="hidden md:flex items-center gap-2">
-              <Link href={user.role === "admin" ? "/admin" : "/dashboard"}>
-                <Button variant="outline" size="sm" data-testid="button-dashboard" className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold">
-                  {user.role === "admin" ? "Admin" : "Dashboard"}
-                </Button>
-              </Link>
+              {serverUser ? (
+                <Link href="/account">
+                  <Button variant="outline" size="sm" data-testid="button-account" className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold">
+                    Account
+                  </Button>
+                </Link>
+              ) : (
+                <Link href={user!.role === "admin" ? "/admin" : "/dashboard"}>
+                  <Button variant="outline" size="sm" data-testid="button-dashboard" className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold">
+                    {user!.role === "admin" ? "Admin" : "Dashboard"}
+                  </Button>
+                </Link>
+              )}
               <Button variant="ghost" size="sm" onClick={signOut} data-testid="button-signout">Sign out</Button>
             </div>
           ) : (
@@ -105,11 +113,17 @@ export function Navbar() {
               </Link>
             ))}
             <div className="h-px bg-brand-gold/20 my-2" />
-            {user ? (
+            {user || serverUser ? (
               <>
-                <Link href={user.role === "admin" ? "/admin" : "/dashboard"} onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium">
-                  {user.role === "admin" ? "Admin" : "Dashboard"}
-                </Link>
+                {serverUser ? (
+                  <Link href="/account" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium" data-testid="link-mobile-account">
+                    Account
+                  </Link>
+                ) : (
+                  <Link href={user!.role === "admin" ? "/admin" : "/dashboard"} onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium">
+                    {user!.role === "admin" ? "Admin" : "Dashboard"}
+                  </Link>
+                )}
                 <button onClick={() => { signOut(); setOpen(false); }} className="text-left px-3 py-2 rounded-md text-sm hover-elevate font-medium">Sign out</button>
               </>
             ) : (
