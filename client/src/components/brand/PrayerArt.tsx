@@ -55,10 +55,10 @@ export function PrayerArt({
           <g>
             <path
               d="M60 110 Q80 80 110 88 Q140 92 145 110 Q130 116 115 108 Q108 130 88 130 Q70 128 60 110 Z"
-              fill="#FDF8F0"
+              fill="#FFFFFF"
               opacity="0.95"
             />
-            <path d="M110 88 Q125 76 145 80" stroke="#FDF8F0" strokeWidth="2" fill="none" opacity="0.9" />
+            <path d="M110 88 Q125 76 145 80" stroke="#FFFFFF" strokeWidth="2" fill="none" opacity="0.9" />
             <circle cx="138" cy="106" r="2" fill={accent} />
           </g>
         )}
@@ -69,7 +69,7 @@ export function PrayerArt({
               fill={accent}
               opacity="0.85"
             />
-            <path d="M100 80 Q112 100 100 130 Q88 110 100 80 Z" fill="#FDF8F0" opacity="0.6" />
+            <path d="M100 80 Q112 100 100 130 Q88 110 100 80 Z" fill="#FFFFFF" opacity="0.6" />
           </g>
         )}
         {motif === "cross" && (
@@ -81,14 +81,14 @@ export function PrayerArt({
         {motif === "olive" && (
           <g>
             <path d="M52 130 Q90 70 150 80" stroke={accent} strokeWidth="2" fill="none" opacity="0.7" />
-            <ellipse cx="80" cy="108" rx="9" ry="4" fill="#FDF8F0" opacity="0.85" transform="rotate(-30 80 108)" />
-            <ellipse cx="100" cy="96" rx="9" ry="4" fill="#FDF8F0" opacity="0.85" transform="rotate(-25 100 96)" />
-            <ellipse cx="120" cy="88" rx="9" ry="4" fill="#FDF8F0" opacity="0.85" transform="rotate(-20 120 88)" />
-            <ellipse cx="140" cy="84" rx="9" ry="4" fill="#FDF8F0" opacity="0.85" transform="rotate(-15 140 84)" />
+            <ellipse cx="80" cy="108" rx="9" ry="4" fill="#FFFFFF" opacity="0.85" transform="rotate(-30 80 108)" />
+            <ellipse cx="100" cy="96" rx="9" ry="4" fill="#FFFFFF" opacity="0.85" transform="rotate(-25 100 96)" />
+            <ellipse cx="120" cy="88" rx="9" ry="4" fill="#FFFFFF" opacity="0.85" transform="rotate(-20 120 88)" />
+            <ellipse cx="140" cy="84" rx="9" ry="4" fill="#FFFFFF" opacity="0.85" transform="rotate(-15 140 84)" />
           </g>
         )}
         {/* Soft border highlight */}
-        <rect x="0" y="0" width="200" height="200" fill="none" stroke="#FDF8F0" strokeOpacity="0.18" />
+        <rect x="0" y="0" width="200" height="200" fill="none" stroke="#FFFFFF" strokeOpacity="0.18" />
       </svg>
     </div>
   );

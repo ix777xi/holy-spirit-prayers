@@ -142,7 +142,7 @@ export default function DashboardPage() {
                       <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{r.date}</td>
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                       <td className="px-4 py-3 text-right">
-                        {r.status === "delivered" || r.status === "completed" ? (
+                        {["delivered", "completed"].includes(r.status) ? (
                           <Button size="sm" variant="outline" data-testid={`button-listen-${r.id}`}>Listen</Button>
                         ) : (
                           <span className="text-xs text-muted-foreground">In progress…</span>

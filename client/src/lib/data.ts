@@ -80,7 +80,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 18420,
     purchaseCount: 2410,
-    art: A("#1B2A4A", "#7BA7BC", "#C9A84C", "rays"),
+    art: A("#050505", "#6B7280", "#111111", "rays"),
   },
   {
     id: "p2",
@@ -98,7 +98,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 64200,
     purchaseCount: 0,
-    art: A("#FDF8F0", "#E0C783", "#1B2A4A", "dove"),
+    art: A("#FFFFFF", "#2B2B2B", "#050505", "dove"),
   },
   {
     id: "p3",
@@ -116,7 +116,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 27300,
     purchaseCount: 3120,
-    art: A("#7BA7BC", "#FDF8F0", "#C9A84C", "olive"),
+    art: A("#6B7280", "#FFFFFF", "#111111", "olive"),
   },
   {
     id: "p4",
@@ -134,7 +134,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 22100,
     purchaseCount: 2790,
-    art: A("#C9A84C", "#1B2A4A", "#FDF8F0", "cross"),
+    art: A("#111111", "#050505", "#FFFFFF", "cross"),
   },
   {
     id: "p5",
@@ -152,7 +152,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 14800,
     purchaseCount: 1860,
-    art: A("#1B2A4A", "#C9A84C", "#7BA7BC", "flame"),
+    art: A("#050505", "#111111", "#6B7280", "flame"),
   },
   {
     id: "p6",
@@ -170,7 +170,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 9400,
     purchaseCount: 1240,
-    art: A("#E0C783", "#7BA7BC", "#1B2A4A", "olive"),
+    art: A("#2B2B2B", "#6B7280", "#050505", "olive"),
   },
   {
     id: "p7",
@@ -188,7 +188,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 11200,
     purchaseCount: 980,
-    art: A("#1B2A4A", "#7BA7BC", "#E0C783", "dove"),
+    art: A("#050505", "#6B7280", "#2B2B2B", "dove"),
   },
   {
     id: "p8",
@@ -206,7 +206,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 13560,
     purchaseCount: 1410,
-    art: A("#7BA7BC", "#C9A84C", "#1B2A4A", "rays"),
+    art: A("#6B7280", "#111111", "#050505", "rays"),
   },
   {
     id: "p9",
@@ -224,7 +224,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 8120,
     purchaseCount: 760,
-    art: A("#C9A84C", "#1B2A4A", "#FDF8F0", "flame"),
+    art: A("#111111", "#050505", "#FFFFFF", "flame"),
   },
   {
     id: "p10",
@@ -242,7 +242,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 19400,
     purchaseCount: 2210,
-    art: A("#FDF8F0", "#C9A84C", "#1B2A4A", "cross"),
+    art: A("#FFFFFF", "#111111", "#050505", "cross"),
   },
   {
     id: "p11",
@@ -260,7 +260,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 10300,
     purchaseCount: 1145,
-    art: A("#1B2A4A", "#C9A84C", "#7BA7BC", "flame"),
+    art: A("#050505", "#111111", "#6B7280", "flame"),
   },
   {
     id: "p12",
@@ -278,7 +278,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 9700,
     purchaseCount: 1080,
-    art: A("#C9A84C", "#7BA7BC", "#1B2A4A", "rays"),
+    art: A("#111111", "#6B7280", "#050505", "rays"),
   },
   {
     id: "p13",
@@ -296,7 +296,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 8200,
     purchaseCount: 920,
-    art: A("#FDF8F0", "#7BA7BC", "#C9A84C", "olive"),
+    art: A("#FFFFFF", "#6B7280", "#111111", "olive"),
   },
   {
     id: "p14",
@@ -314,7 +314,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 7400,
     purchaseCount: 690,
-    art: A("#7BA7BC", "#1B2A4A", "#E0C783", "dove"),
+    art: A("#6B7280", "#050505", "#2B2B2B", "dove"),
   },
   {
     id: "p15",
@@ -332,7 +332,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 11900,
     purchaseCount: 1320,
-    art: A("#C9A84C", "#FDF8F0", "#1B2A4A", "rays"),
+    art: A("#111111", "#FFFFFF", "#050505", "rays"),
   },
   {
     id: "p16",
@@ -350,7 +350,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 9100,
     purchaseCount: 1010,
-    art: A("#1B2A4A", "#E0C783", "#7BA7BC", "flame"),
+    art: A("#050505", "#2B2B2B", "#6B7280", "flame"),
   },
   {
     id: "p17",
@@ -368,7 +368,7 @@ export const prayers: Prayer[] = [
     isFeatured: false,
     playCount: 8600,
     purchaseCount: 890,
-    art: A("#FDF8F0", "#C9A84C", "#7BA7BC", "olive"),
+    art: A("#FFFFFF", "#111111", "#6B7280", "olive"),
   },
   {
     id: "p18",
@@ -386,7 +386,7 @@ export const prayers: Prayer[] = [
     isFeatured: true,
     playCount: 10200,
     purchaseCount: 1190,
-    art: A("#7BA7BC", "#FDF8F0", "#C9A84C", "dove"),
+    art: A("#6B7280", "#FFFFFF", "#111111", "dove"),
   },
 ];
 

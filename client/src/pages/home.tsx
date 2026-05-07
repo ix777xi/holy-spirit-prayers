@@ -4,6 +4,7 @@ import { PageShell } from "@/components/brand/PageShell";
 import { Scripture } from "@/components/brand/Scripture";
 import { SectionDivider } from "@/components/brand/SectionDivider";
 import { PrayerCard } from "@/components/brand/PrayerCard";
+import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { prayers } from "@/lib/data";
 
@@ -13,21 +14,21 @@ export default function HomePage() {
     <PageShell>
       {/* HERO */}
       <section className="surface-cathedral border-b border-border/60">
-        <div className="mx-auto max-w-5xl px-6 py-20 md:py-28 text-center space-y-8">
+        <div className="mx-auto max-w-5xl px-6 py-16 md:py-24 text-center space-y-8">
+          <div className="flex justify-center">
+            <Logo size="lg" orientation="stacked" />
+          </div>
           <Scripture reference="Romans 8:26" align="center" size="lg">
             Likewise the Spirit also helps in our weaknesses. For we do not know what we should pray for as we ought,
             but the Spirit Himself makes intercession for us…
           </Scripture>
-          <h1 className="headline text-4xl md:text-5xl lg:text-6xl text-foreground" data-testid="text-hero-headline">
-            Let the Holy Spirit <span className="text-brand-gold">Pray Through You</span>
-          </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
             Bible-rooted prayers for every season of life. Listen, download, or request your own —
             so that when words fail, prayer doesn’t.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link href="/free-prayer">
-              <Button size="lg" className="bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold" data-testid="button-cta-free">
+              <Button size="lg" className="bg-brand-gold hover:bg-brand-goldsoft text-white font-semibold" data-testid="button-cta-free">
                 Listen to a Free Prayer
               </Button>
             </Link>
@@ -37,7 +38,7 @@ export default function HomePage() {
               </Button>
             </Link>
             <Link href="/custom-prayer">
-              <Button size="lg" className="bg-brand-blue hover:bg-brand-blue/90 text-brand-navy font-semibold" data-testid="button-cta-custom">
+              <Button size="lg" className="bg-brand-blue hover:bg-brand-blue/90 text-white font-semibold" data-testid="button-cta-custom">
                 Request Custom Prayer
               </Button>
             </Link>
@@ -84,31 +85,6 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {featured.map((p) => <PrayerCard key={p.id} prayer={p} />)}
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="bg-brand-cream dark:bg-card/40 border-y border-border/60">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">From the Community</div>
-            <h2 className="headline text-3xl md:text-4xl text-brand-navy dark:text-foreground">Encouragement, in their words</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { name: "Hannah C.", text: "I’ve been listening to Psalm 91 every morning for two months. The peace in my home has shifted. This is more than an app — it’s a sanctuary." },
-              { name: "Marcus R.", text: "I bought the Anxiety prayer the week my dad got sick. It met me at a level my own words couldn’t. Worth far more than $7." },
-              { name: "Priscilla A.", text: "Asked for a custom prayer for my marriage. The audio was Scripture-rich and tender. We pray it together now." },
-            ].map((t) => (
-              <figure key={t.name} className="rounded-xl bg-white dark:bg-card border border-card-border p-7 shadow-sm">
-                <div aria-hidden className="text-4xl font-serif text-brand-gold leading-none">“</div>
-                <blockquote className="text-brand-navy dark:text-foreground leading-relaxed font-serif italic mt-2">
-                  {t.text}
-                </blockquote>
-                <figcaption className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">— {t.name}</figcaption>
-              </figure>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -167,7 +143,7 @@ function NewsletterInline() {
       />
       <button
         type="submit"
-        className="rounded-md bg-brand-gold text-brand-navy text-sm font-semibold px-5 py-2 hover:bg-brand-goldsoft"
+        className="rounded-md bg-brand-gold text-white text-sm font-semibold px-5 py-2 hover:bg-brand-goldsoft"
         data-testid="button-newsletter-home"
       >
         Subscribe

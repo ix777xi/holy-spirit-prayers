@@ -172,7 +172,7 @@ The current `routes.ts` uses an **in-memory store** that resets on restart. That
 
 ## Design System
 
-- Palette: Gold `#C9A84C`, Soft Blue `#7BA7BC`, Deep Navy `#1B2A4A`, Warm Cream `#FDF8F0`, Ink `#2D2D2D`
+- Palette: Gold `#111111`, Soft Blue `#6B7280`, Deep Navy `#050505`, Warm Cream `#FFFFFF`, Ink `#2D2D2D`
 - Typography: **Cormorant Garamond** serif for headings + **Inter** for body
 - Dark mode: first-class, toggled via React state seeded from `prefers-color-scheme` (no storage)
 - Custom inline SVG logo + navy/gold favicon embedded in `client/index.html`

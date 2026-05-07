@@ -330,8 +330,8 @@ export function AdminDashboard() {
                 <AreaChart data={revenue30d}>
                   <defs>
                     <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#C9A84C" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#C9A84C" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#111111" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#111111" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -348,7 +348,7 @@ export function AdminDashboard() {
                   <Area
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#C9A84C"
+                    stroke="#111111"
                     strokeWidth={2}
                     fill="url(#rev)"
                   />
@@ -377,7 +377,7 @@ export function AdminDashboard() {
                       fontSize: 12,
                     }}
                   />
-                  <Bar dataKey="value" fill="#C9A84C" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="#111111" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -755,7 +755,7 @@ export function AdminCustomRequests() {
             <DialogTitle className="font-serif text-lg">
               Request {selected?.id}
             </DialogTitle>
-            <DialogDescription>From {selected?.customer}</DialogDescription>
+            <DialogDescription>From {selected?.userName}</DialogDescription>
           </DialogHeader>
           {selected && (
             <div className="space-y-3 text-sm">
@@ -955,9 +955,9 @@ export function AdminAnalytics() {
                   <Line
                     type="monotone"
                     dataKey="users"
-                    stroke="#7BA7BC"
+                    stroke="#6B7280"
                     strokeWidth={2}
-                    dot={{ fill: "#7BA7BC", r: 3 }}
+                    dot={{ fill: "#6B7280", r: 3 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -984,7 +984,7 @@ export function AdminAnalytics() {
                       fontSize: 12,
                     }}
                   />
-                  <Bar dataKey="value" fill="#C9A84C" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="#111111" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1011,7 +1011,7 @@ export function AdminAnalytics() {
                       fontSize: 12,
                     }}
                   />
-                  <Bar dataKey="revenue" fill="#C9A84C" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" fill="#111111" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

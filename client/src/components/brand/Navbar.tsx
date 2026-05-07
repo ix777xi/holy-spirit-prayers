@@ -19,10 +19,10 @@ export function Navbar() {
   const { user, signOut } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <div className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between gap-4">
-        <Link href="/" className="hover-elevate rounded-md px-1 py-1 -mx-1" data-testid="link-home">
-          <Logo size="sm" />
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/92 backdrop-blur supports-[backdrop-filter]:bg-background/82">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 min-h-24 flex items-center justify-between gap-4">
+        <Link href="/" className="hover-elevate rounded-md px-2 py-2 -mx-2" data-testid="link-home">
+          <Logo size="sm" orientation="stacked" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
@@ -64,7 +64,7 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-2">
               <Link href="/login"><Button variant="ghost" size="sm" data-testid="button-login">Log in</Button></Link>
               <Link href="/register">
-                <Button size="sm" className="bg-brand-gold hover:bg-brand-gold/90 text-brand-navy font-semibold" data-testid="button-register">
+                <Button size="sm" className="bg-brand-gold hover:bg-brand-gold/90 text-white font-semibold" data-testid="button-register">
                   Sign up
                 </Button>
               </Link>
@@ -108,7 +108,7 @@ export function Navbar() {
             ) : (
               <>
                 <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium">Log in</Link>
-                <Link href="/register" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-semibold bg-brand-gold/15 text-brand-navy dark:text-brand-gold">Sign up</Link>
+                <Link href="/register" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-semibold bg-brand-gold text-white">Sign up</Link>
               </>
             )}
           </nav>
