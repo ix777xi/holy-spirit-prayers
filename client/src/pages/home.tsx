@@ -59,7 +59,7 @@ export default function HomePage() {
             style={{ fontFamily: "var(--font-display)" }}
             data-testid="text-hero-title"
           >
-            Spirit-led prayers,<br className="hidden md:block" />
+            Spirit-led prayers,<br className="hidden md:block" />{" "}
             <span className="text-brand-gold">rooted in Scripture.</span>
           </h1>
 
