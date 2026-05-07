@@ -1,24 +1,78 @@
-import { useState } from "react";
-import { Link, useRoute } from "wouter";
-import { Play, Pause, Download, ChevronRight, Heart, Lock, BookOpen, ArrowLeft } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, useLocation, useRoute } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { Download, ChevronRight, Lock, BookOpen, ArrowLeft, BookmarkPlus } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
-import { PrayerArt } from "@/components/brand/PrayerArt";
-import { PrayerCard } from "@/components/brand/PrayerCard";
-import { SectionDivider } from "@/components/brand/SectionDivider";
 import { Scripture } from "@/components/brand/Scripture";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { getPrayerBySlug, getRelated, getCategoryBySlug, formatDuration } from "@/lib/data";
-import { usePlayer } from "@/lib/app-context";
+import { categories } from "@/lib/data";
+import { useAuth } from "@/lib/app-context";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+type UploadedPrayerItem = {
+  id: number;
+  title: string;
+  categorySlug: string;
+  description: string;
+  bibleTheme: string;
+  supportingScripture: string;
+  aboutPrayer: string;
+  whatsIncluded: string;
+  scriptureQuote: string;
+  scriptureReference: string;
+  categoryDescription: string;
+  audioUrl: string | null;
+  downloadUrl: string | null;
+  durationSeconds: number;
+  audioOriginalName: string;
+  audioMimeType: string;
+  audioSize: number;
+  createdAt: string;
+  access: boolean;
+  purchased: boolean;
+  subscribed: boolean;
+  priceCents: number;
+};
+
+function splitLines(s: string): string[] {
+  return s
+    .split(/\r?\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
 
 export default function PrayerDetailPage() {
-  const [, params] = useRoute<{ slug: string }>("/prayer/:slug");
-  const slug = params?.slug ?? "";
-  const prayer = getPrayerBySlug(slug);
-  const { play, pause, isPlaying, prayer: current, purchase, isOwned, toggleFavorite, isFavorite } = usePlayer();
+  const [, params] = useRoute<{ id: string }>("/prayer/:id");
+  const idParam = params?.id ?? "";
+  const id = Number(idParam);
+  const { serverUser } = useAuth();
   const { toast } = useToast();
-  const [purchasedAt, setPurchasedAt] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [, navigate] = useLocation();
+  const [buying, setBuying] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const { data, isLoading } = useQuery<{ ok: boolean; items: UploadedPrayerItem[] }>({
+    queryKey: ["/api/uploaded-prayers"],
+  });
+
+  const prayer = useMemo(
+    () => (data?.items ?? []).find((p) => p.id === id),
+    [data, id],
+  );
+
+  const otherPrayers = useMemo(
+    () => (data?.items ?? []).filter((p) => p.id !== id).slice(0, 3),
+    [data, id],
+  );
+
+  if (isLoading) {
+    return (
+      <PageShell>
+        <div className="mx-auto max-w-3xl px-6 py-24 text-center text-muted-foreground">Loading prayer…</div>
+      </PageShell>
+    );
+  }
 
   if (!prayer) {
     return (
@@ -32,13 +86,60 @@ export default function PrayerDetailPage() {
     );
   }
 
-  const category = getCategoryBySlug(prayer.categorySlug);
-  const owned = isOwned(prayer.slug) || prayer.isFree;
-  const isThisPlaying = current?.id === prayer.id && isPlaying;
+  const category = categories.find((c) => c.slug === prayer.categorySlug);
+  const scriptureLines = splitLines(prayer.supportingScripture);
+  const includedLines = splitLines(prayer.whatsIncluded);
+  const priceLabel = `$${(prayer.priceCents / 100).toFixed(0)}`;
 
-  const scriptureFullTextMock: Record<string, string> = {
-    "Romans 8:26": "Likewise the Spirit also helps in our weaknesses. For we do not know what we should pray for as we ought, but the Spirit Himself makes intercession for us with groanings which cannot be uttered.",
-  };
+  async function buyPrayer() {
+    if (!serverUser) {
+      navigate("/login");
+      return;
+    }
+    if (!prayer) return;
+    setBuying(true);
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/uploaded-prayers/${prayer.id}/create-checkout-session`,
+        {},
+      );
+      const json = await res.json();
+      if (json?.url) {
+        window.location.href = json.url;
+        return;
+      }
+      throw new Error(json?.error || "Could not start checkout.");
+    } catch (err: any) {
+      toast({ title: "Checkout unavailable", description: err?.message || "Try again later.", variant: "destructive" });
+      setBuying(false);
+    }
+  }
+
+  async function saveToAccount() {
+    if (!serverUser) {
+      navigate("/account");
+      return;
+    }
+    if (!prayer) return;
+    setSaving(true);
+    try {
+      await apiRequest("POST", "/api/me/prayers", {
+        source: "uploaded",
+        prayerKey: String(prayer.id),
+        title: prayer.title,
+        categorySlug: prayer.categorySlug,
+        description: prayer.description,
+        audioUrl: prayer.audioUrl ?? "",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/prayers"] });
+      toast({ title: "Saved", description: "Added to your account." });
+    } catch (err: any) {
+      toast({ title: "Could not save", description: err?.message || "Try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <PageShell>
@@ -48,103 +149,88 @@ export default function PrayerDetailPage() {
           <ChevronRight className="h-3 w-3" />
           <Link href="/library" className="hover:text-brand-gold">Library</Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground font-medium truncate max-w-[200px]">{prayer.title}</span>
+          <span className="text-foreground font-medium truncate max-w-[200px]" data-testid="text-prayer-breadcrumb">
+            {prayer.title}
+          </span>
         </nav>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10">
-          {/* HERO ART */}
-          <div className="md:col-span-5">
-            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-lg">
-              <PrayerArt prayer={prayer} className="absolute inset-0" rounded="rounded-none" />
-              <button
-                onClick={() => isThisPlaying ? pause() : play(prayer)}
-                className="absolute bottom-5 left-5 rounded-full bg-brand-gold text-brand-navy p-4 shadow-lg hover:bg-brand-goldsoft"
-                aria-label={isThisPlaying ? "Pause preview" : "Play preview"}
-                data-testid="button-detail-play"
-              >
-                {isThisPlaying ? <Pause className="h-5 w-5" fill="currentColor" /> : <Play className="h-5 w-5" fill="currentColor" />}
-              </button>
-              <button
-                onClick={() => toggleFavorite(prayer.slug)}
-                aria-label="Toggle favorite"
-                aria-pressed={isFavorite(prayer.slug)}
-                data-testid="button-detail-favorite"
-                className={`absolute top-5 right-5 rounded-full p-2.5 backdrop-blur-md ${
-                  isFavorite(prayer.slug) ? "bg-brand-gold/90 text-brand-navy" : "bg-white/15 text-white hover:bg-white/25"
-                }`}
-              >
-                <Heart className="h-4 w-4" fill={isFavorite(prayer.slug) ? "currentColor" : "none"} />
-              </button>
+          <div className="md:col-span-7 space-y-5">
+            <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider">
+              {category ? (
+                <span className="rounded-full bg-brand-cream dark:bg-brand-gold/15 text-brand-navy dark:text-brand-gold font-medium px-2.5 py-1">
+                  {category.name}
+                </span>
+              ) : null}
+              <span className="text-muted-foreground">
+                Uploaded {new Date(prayer.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            <h1 className="headline text-3xl md:text-5xl" data-testid="text-prayer-title">{prayer.title}</h1>
+            {prayer.bibleTheme ? (
+              <p className="text-lg text-muted-foreground" data-testid="text-prayer-bible-theme">
+                {prayer.bibleTheme}
+              </p>
+            ) : null}
+
+            <div className="rounded-xl border border-card-border bg-card p-5 flex flex-col gap-4">
+              {prayer.access && prayer.audioUrl ? (
+                <audio
+                  controls
+                  preload="none"
+                  src={prayer.audioUrl}
+                  className="w-full"
+                  data-testid="audio-prayer-detail"
+                />
+              ) : (
+                <div className="rounded-md border border-dashed border-card-border bg-background/40 px-3 py-3 text-sm text-muted-foreground flex items-center gap-2" data-testid="audio-locked-detail">
+                  <Lock className="h-4 w-4 text-brand-gold shrink-0" />
+                  {!serverUser
+                    ? "Sign in and unlock this prayer to listen."
+                    : `Unlock this prayer for ${priceLabel}, or subscribe for unlimited listening.`}
+                </div>
+              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={saveToAccount}
+                  disabled={saving}
+                  data-testid="button-detail-save"
+                >
+                  <BookmarkPlus className="h-4 w-4 mr-1.5" />
+                  {serverUser ? (saving ? "Saving…" : "Save to account") : "Sign in to save"}
+                </Button>
+                {prayer.access && prayer.downloadUrl ? (
+                  <a
+                    href={prayer.downloadUrl}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-navy hover:bg-brand-goldsoft"
+                    data-testid="link-detail-download"
+                  >
+                    <Download className="h-4 w-4" /> Download MP3
+                  </a>
+                ) : (
+                  <Button
+                    onClick={buyPrayer}
+                    disabled={buying}
+                    className="bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold"
+                    data-testid="button-detail-purchase"
+                  >
+                    {buying ? "Starting…" : `Buy & Download — ${priceLabel}`}
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] tracking-wide text-muted-foreground" data-testid="text-detail-promo-hint">
+                Have a promo code? Enter it at checkout.
+              </p>
             </div>
           </div>
 
-          {/* HERO TEXT + PURCHASE */}
-          <div className="md:col-span-7 space-y-5">
-            <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wider">
-              <span className="rounded-full bg-brand-cream dark:bg-brand-gold/15 text-brand-navy dark:text-brand-gold font-medium px-2.5 py-1">
-                {category?.name}
-              </span>
-              <span className="text-muted-foreground">{formatDuration(prayer.durationSeconds)}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-muted-foreground">{prayer.playCount.toLocaleString()} plays</span>
-            </div>
-            <h1 className="headline text-3xl md:text-5xl" data-testid="text-prayer-title">{prayer.title}</h1>
-            <p className="text-lg text-muted-foreground">{prayer.bibleTheme}</p>
-
-            <div className="rounded-xl border border-card-border bg-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                {prayer.isFree ? (
-                  <div className="text-sm">
-                    <div className="font-serif text-2xl font-semibold text-brand-gold">Free</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Sample prayer · email required for download</div>
-                  </div>
-                ) : owned ? (
-                  <div className="text-sm">
-                    <div className="font-serif text-2xl font-semibold text-foreground">Owned</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{purchasedAt ? `Purchased ${purchasedAt}` : "In your library"}</div>
-                  </div>
-                ) : (
-                  <div className="text-sm">
-                    <div className="font-serif text-2xl font-semibold text-foreground">${prayer.price.toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">One-time purchase · download forever</div>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => isThisPlaying ? pause() : play(prayer)} data-testid="button-detail-preview">
-                  {isThisPlaying ? <Pause className="h-4 w-4 mr-1.5" /> : <Play className="h-4 w-4 mr-1.5" />}
-                  Preview
-                </Button>
-                {owned ? (
-                  <Button
-                    className="bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold"
-                    data-testid="button-detail-download"
-                    onClick={() => toast({ title: "Download started", description: "Your prayer audio is on its way (mock)." })}
-                  >
-                    <Download className="h-4 w-4 mr-1.5" /> Download
-                  </Button>
-                ) : (
-                  <Button
-                    className="bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold"
-                    data-testid="button-detail-purchase"
-                    onClick={() => {
-                      // mock purchase flow
-                      purchase(prayer.slug);
-                      const today = new Date().toLocaleDateString();
-                      setPurchasedAt(today);
-                      toast({ title: "Purchase complete (mock)", description: `${prayer.title} is now in your library.` });
-                    }}
-                  >
-                    Buy & Download — $7
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {!owned && !prayer.isFree ? (
-              <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
-                <Lock className="h-3 w-3" /> Stripe checkout is stubbed in this preview — purchases are mocked.
-              </p>
+          {/* SCRIPTURE QUOTE */}
+          <div className="md:col-span-5">
+            {prayer.scriptureQuote ? (
+              <Scripture reference={prayer.scriptureReference || prayer.supportingScripture.split(/\r?\n/)[0] || ""}>
+                {prayer.scriptureQuote}
+              </Scripture>
             ) : null}
           </div>
         </div>
@@ -152,80 +238,99 @@ export default function PrayerDetailPage() {
         {/* CONTENT */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 mt-14 md:mt-20">
           <div className="md:col-span-8 space-y-10">
-            <section>
-              <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-2">Bible Theme</div>
-              <p className="font-serif text-xl md:text-2xl leading-snug text-foreground">{prayer.bibleTheme}</p>
-            </section>
+            {prayer.bibleTheme ? (
+              <section>
+                <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-2">Bible Theme</div>
+                <p className="font-serif text-xl md:text-2xl leading-snug text-foreground" data-testid="text-detail-bible-theme">
+                  {prayer.bibleTheme}
+                </p>
+              </section>
+            ) : null}
 
-            <section>
-              <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">Supporting Scripture</div>
-              <ul className="space-y-2">
-                {prayer.scriptures.map((s) => (
-                  <li key={s} className="rounded-md border border-card-border bg-card p-3">
-                    <button
-                      className="w-full flex items-center justify-between text-left"
-                      onClick={() => setExpanded((e) => ({ ...e, [s]: !e[s] }))}
-                      aria-expanded={!!expanded[s]}
-                      data-testid={`button-scripture-${s.replace(/\W+/g, "-")}`}
-                    >
-                      <span className="font-medium inline-flex items-center gap-2"><BookOpen className="h-4 w-4 text-brand-gold" />{s}</span>
-                      <ChevronRight className={`h-4 w-4 transition-transform ${expanded[s] ? "rotate-90" : ""}`} />
-                    </button>
-                    {expanded[s] ? (
-                      <p className="mt-3 text-sm font-serif italic text-foreground/85">
-                        {scriptureFullTextMock[s] ?? "Tap to open this Scripture in your preferred Bible app — full text would load here in production."}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {scriptureLines.length > 0 ? (
+              <section>
+                <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">Supporting Scripture</div>
+                <ul className="space-y-2" data-testid="list-detail-scripture">
+                  {scriptureLines.map((s) => (
+                    <li key={s} className="rounded-md border border-card-border bg-card p-3 inline-flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-brand-gold" />
+                      <span className="font-medium">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
-            <section>
-              <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">About this prayer</div>
-              <p className="text-foreground/85 leading-relaxed">{prayer.description}</p>
-            </section>
+            {prayer.aboutPrayer || prayer.description ? (
+              <section>
+                <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">About this prayer</div>
+                <p className="text-foreground/85 leading-relaxed whitespace-pre-line" data-testid="text-detail-about">
+                  {prayer.aboutPrayer || prayer.description}
+                </p>
+              </section>
+            ) : null}
 
-            <section>
-              <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">What’s included</div>
-              <ul className="space-y-1.5 text-sm">
-                {prayer.whatsIncluded.map((line) => (
-                  <li key={line} className="flex items-start gap-2">
-                    <span className="mt-1.5 inline-block w-1.5 h-1.5 rounded-full bg-brand-gold" />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {includedLines.length > 0 ? (
+              <section>
+                <div className="text-xs uppercase tracking-[0.18em] text-brand-gold mb-3">What’s included</div>
+                <ul className="space-y-1.5 text-sm" data-testid="list-detail-whats-included">
+                  {includedLines.map((line) => (
+                    <li key={line} className="flex items-start gap-2">
+                      <span className="mt-1.5 inline-block w-1.5 h-1.5 rounded-full bg-brand-gold" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </div>
 
           <aside className="md:col-span-4 space-y-6">
-            <Scripture reference="Romans 8:26">
-              Likewise the Spirit also helps in our weaknesses. For we do not know what we should pray for as we ought,
-              but the Spirit Himself makes intercession for us…
-            </Scripture>
-            <div className="rounded-xl border border-card-border bg-card p-5">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Category</div>
-              <Link href="/library" className="font-serif text-lg font-semibold hover:text-brand-gold">{category?.name}</Link>
-              <p className="text-sm text-muted-foreground mt-1">{category?.description}</p>
-            </div>
+            {category ? (
+              <div className="rounded-xl border border-card-border bg-card p-5">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Category</div>
+                <Link href={`/library?category=${category.slug}`} className="font-serif text-lg font-semibold hover:text-brand-gold" data-testid="link-detail-category">
+                  {category.name}
+                </Link>
+                <p className="text-sm text-muted-foreground mt-1" data-testid="text-detail-category-description">
+                  {prayer.categoryDescription || category.description}
+                </p>
+              </div>
+            ) : null}
           </aside>
         </div>
 
-        <div className="my-16">
-          <SectionDivider icon="flame" />
-        </div>
-
-        {/* RELATED */}
-        <section>
-          <div className="flex items-end justify-between mb-6">
-            <h2 className="headline text-2xl md:text-3xl">You may also like</h2>
-            <Link href="/library" className="text-sm hover:text-brand-gold inline-flex items-center gap-1"><ArrowLeft className="h-4 w-4" /> Back to library</Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {getRelated(prayer, 3).map((p) => <PrayerCard key={p.id} prayer={p} />)}
-          </div>
-        </section>
+        {otherPrayers.length > 0 ? (
+          <section className="mt-16">
+            <div className="flex items-end justify-between mb-6">
+              <h2 className="headline text-2xl md:text-3xl">More prayers</h2>
+              <Link href="/library" className="text-sm hover:text-brand-gold inline-flex items-center gap-1">
+                <ArrowLeft className="h-4 w-4" /> Back to library
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {otherPrayers.map((p) => {
+                const cat = categories.find((c) => c.slug === p.categorySlug);
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/prayer/${p.id}`}
+                    className="rounded-xl border border-card-border bg-card p-5 hover-elevate flex flex-col gap-2"
+                    data-testid={`card-other-prayer-${p.id}`}
+                  >
+                    <div className="text-[11px] uppercase tracking-wider text-brand-gold font-medium">
+                      {cat?.name || p.categorySlug}
+                    </div>
+                    <h3 className="font-serif text-lg font-semibold leading-snug">{p.title}</h3>
+                    {p.bibleTheme ? (
+                      <p className="text-sm text-muted-foreground line-clamp-2 italic">{p.bibleTheme}</p>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
       </div>
     </PageShell>
   );

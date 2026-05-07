@@ -1,44 +1,25 @@
-import { useState, useMemo, ReactNode, useRef, useEffect, useCallback } from "react";
+import { useState, ReactNode, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
-  BookOpen,
-  Tags,
-  Sparkles,
-  ShoppingCart,
-  Users,
-  BarChart3,
+  UploadCloud,
   Settings as SettingsIcon,
+  Sparkles,
   Plus,
-  Search,
-  Download,
-  Eye,
   ArrowLeft,
   CheckCircle2,
   Clock,
   TrendingUp,
-  DollarSign,
-  UploadCloud,
+  UploadCloud as UploadIcon,
   Trash2,
   Music,
   ShieldCheck,
   LogOut,
   Loader2,
+  ShoppingCart,
+  Users,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,60 +33,25 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/lib/app-context";
 import { Logo } from "@/components/brand/Logo";
-import {
-  categories,
-  prayers,
-  mockOrders,
-  mockCustomRequests,
-  mockUsers,
-  revenue30d,
-  popularCategories,
-  userGrowth,
-  formatDuration,
-} from "@/lib/data";
+import { categories, formatDuration } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 
 /* ---------- Admin Shell ---------- */
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/prayers", label: "Prayers", icon: BookOpen },
-  { href: "/admin/uploads", label: "Upload MP3", icon: UploadCloud },
-  { href: "/admin/categories", label: "Categories", icon: Tags },
-  {
-    href: "/admin/custom-requests",
-    label: "Custom Requests",
-    icon: Sparkles,
-  },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/uploads", label: "Upload Prayer", icon: UploadCloud },
+  { href: "/admin/custom-requests", label: "Custom Requests", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -126,14 +72,9 @@ function AdminShell({
   return (
     <div className="min-h-screen bg-brand-cream/30 dark:bg-brand-navy/40">
       <div className="flex">
-        {/* Sidebar */}
         <aside className="hidden lg:flex w-64 flex-col border-r bg-card min-h-screen sticky top-0">
           <div className="p-6 border-b">
-            <Link
-              href="/"
-              data-testid="link-admin-home"
-              className="flex items-center"
-            >
+            <Link href="/" data-testid="link-admin-home" className="flex items-center">
               <Logo size="md" />
             </Link>
             <div className="mt-2 text-xs uppercase tracking-widest text-brand-gold font-semibold">
@@ -165,7 +106,7 @@ function AdminShell({
           </nav>
           <div className="p-4 border-t">
             <Link
-              href="/dashboard"
+              href="/account"
               data-testid="link-back-to-app"
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
             >
@@ -174,9 +115,7 @@ function AdminShell({
           </div>
         </aside>
 
-        {/* Main */}
         <main className="flex-1 min-w-0">
-          {/* Mobile top bar */}
           <div className="lg:hidden border-b bg-card sticky top-0 z-10">
             <div className="flex items-center justify-between p-4">
               <Link href="/" data-testid="link-mobile-home">
@@ -221,9 +160,7 @@ function AdminShell({
                   {title}
                 </h1>
                 {subtitle && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {subtitle}
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
                 )}
               </div>
               <div className="flex items-center gap-3">
@@ -265,14 +202,12 @@ const KPICard = ({
     <CardContent className="p-6">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">
-            {label}
-          </div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
           <div className="font-serif text-xl mt-2" data-testid={`text-kpi-value-${testId}`}>
             {value}
           </div>
           {delta && (
-            <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
               <TrendingUp className="h-3 w-3" /> {delta}
             </div>
           )}
@@ -285,747 +220,84 @@ const KPICard = ({
   </Card>
 );
 
+type DashboardSummary = {
+  ok: boolean;
+  uploadedPrayers: number;
+  newsletterSignups: number;
+  contactSubmissions: number;
+  customPrayerRequests: number;
+};
+
 export function AdminDashboard() {
-  const totalRevenue = useMemo(
-    () => mockOrders.reduce((s, o) => s + o.amount, 0),
-    [],
-  );
-  const pending = mockCustomRequests.filter((r) => r.status === "pending").length;
+  const { data } = useQuery<DashboardSummary>({ queryKey: ["/api/admin/dashboard"] });
 
   return (
-    <AdminShell
-      title="Dashboard"
-      subtitle="Overview of your prayer marketplace performance"
-    >
+    <AdminShell title="Dashboard" subtitle="Overview of your prayer marketplace">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KPICard
-          label="Revenue (30d)"
-          value={`$${totalRevenue.toLocaleString()}`}
-          delta="+12.4% vs last month"
-          icon={DollarSign}
-          testId="revenue"
+          label="Uploaded Prayers"
+          value={String(data?.uploadedPrayers ?? 0)}
+          icon={Music}
+          testId="uploaded"
         />
         <KPICard
-          label="Total Orders"
-          value={String(mockOrders.length)}
-          delta="+8 this week"
-          icon={ShoppingCart}
-          testId="orders"
-        />
-        <KPICard
-          label="Active Users"
-          value={String(mockUsers.length)}
-          delta="+3 this week"
+          label="Newsletter Signups"
+          value={String(data?.newsletterSignups ?? 0)}
           icon={Users}
-          testId="users"
+          testId="newsletter"
         />
         <KPICard
-          label="Pending Requests"
-          value={String(pending)}
+          label="Contact Messages"
+          value={String(data?.contactSubmissions ?? 0)}
+          icon={ShoppingCart}
+          testId="contact"
+        />
+        <KPICard
+          label="Custom Requests"
+          value={String(data?.customPrayerRequests ?? 0)}
           icon={Sparkles}
-          testId="pending"
+          testId="custom"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Revenue, Last 30 Days</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenue30d}>
-                  <defs>
-                    <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#111111" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#111111" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#111111"
-                    strokeWidth={2}
-                    fill="url(#rev)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Top Categories</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={popularCategories} layout="vertical" margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={11} width={110} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#111111" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-serif text-lg">Recent Orders</CardTitle>
-            <Link
-              href="/admin/orders"
-              data-testid="link-view-all-orders"
-              className="text-xs text-brand-gold hover:underline"
-            >
-              View all →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockOrders.slice(0, 5).map((o) => (
-                  <TableRow key={o.id} data-testid={`row-recent-order-${o.id}`}>
-                    <TableCell className="font-mono text-xs">{o.id}</TableCell>
-                    <TableCell className="truncate max-w-[160px]">{o.userName}</TableCell>
-                    <TableCell>${o.amount}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          o.paymentStatus === "paid"
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                            : o.paymentStatus === "refunded"
-                              ? "bg-red-500/15 text-red-700 dark:text-red-400"
-                              : ""
-                        }
-                      >
-                        {o.paymentStatus}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-serif text-lg">Custom Requests</CardTitle>
-            <Link
-              href="/admin/custom-requests"
-              data-testid="link-view-all-requests"
-              className="text-xs text-brand-gold hover:underline"
-            >
-              View all →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {mockCustomRequests.slice(0, 5).map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0"
-                  data-testid={`row-recent-request-${r.id}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{r.userName}</div>
-                    <div className="text-xs text-muted-foreground truncate">{r.description}</div>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      r.status === "pending"
-                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                        : r.status === "delivered"
-                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                          : ""
-                    }
-                  >
-                    {r.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AdminShell>
-  );
-}
-
-/* ---------- Prayers ---------- */
-
-export function AdminPrayers() {
-  const [search, setSearch] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
-  const { toast } = useToast();
-
-  const filtered = prayers.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  return (
-    <AdminShell
-      title="Prayers"
-      subtitle={`${prayers.length} prayers in your library`}
-      actions={
-        <Button
-          onClick={() => setShowAdd(true)}
-          className="bg-brand-gold hover:bg-brand-gold/90 text-brand-navy"
-          data-testid="button-add-prayer"
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Prayer
-        </Button>
-      }
-    >
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search prayers..."
-                className="pl-9"
-                data-testid="input-search-prayers"
-              />
-            </div>
-            <Button variant="outline" data-testid="button-export-prayers">
-              <Download className="h-4 w-4 mr-2" /> Export CSV
+        <CardHeader>
+          <CardTitle className="font-serif text-lg">Quick start</CardTitle>
+          <CardDescription>
+            Upload a Spirit-led prayer with structured Bible theme, scripture, and notes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Link href="/admin/uploads">
+            <Button className="bg-brand-gold hover:bg-brand-gold/90 text-brand-navy" data-testid="button-go-uploads">
+              <Plus className="h-4 w-4 mr-2" /> Upload a prayer
             </Button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p) => {
-                  const cat = categories.find((c) => c.slug === p.categorySlug);
-                  return (
-                  <TableRow key={p.slug} data-testid={`row-prayer-${p.slug}`}>
-                    <TableCell className="font-medium max-w-[260px] truncate">
-                      {p.title}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {cat?.name || p.categorySlug}
-                    </TableCell>
-                    <TableCell>{formatDuration(p.durationSeconds)}</TableCell>
-                    <TableCell>
-                      {p.isFree ? (
-                        <Badge variant="secondary" className="bg-brand-blue/15 text-brand-blue">
-                          Free
-                        </Badge>
-                      ) : (
-                        `$${p.price}`
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                        Published
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/prayer/${p.slug}`}
-                        data-testid={`link-view-prayer-${p.slug}`}
-                      >
-                        <Button size="sm" variant="ghost">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          </Link>
+          <Link href="/admin/custom-requests">
+            <Button variant="outline" data-testid="button-go-custom-requests">
+              View custom requests
+            </Button>
+          </Link>
         </CardContent>
       </Card>
-
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-lg">Add New Prayer</DialogTitle>
-            <DialogDescription>
-              Create a new prayer for the marketplace. Audio upload is stubbed in this prototype.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="np-title">Title</Label>
-              <Input id="np-title" placeholder="Morning Surrender" data-testid="input-new-prayer-title" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="np-cat">Category</Label>
-                <Select>
-                  <SelectTrigger id="np-cat" data-testid="select-new-prayer-category">
-                    <SelectValue placeholder="Choose..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.slice(0, 10).map((c) => (
-                      <SelectItem key={c.slug} value={c.slug}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="np-price">Price</Label>
-                <Input id="np-price" type="number" defaultValue="7" data-testid="input-new-prayer-price" />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="np-desc">Description</Label>
-              <Textarea id="np-desc" rows={3} data-testid="input-new-prayer-description" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdd(false)} data-testid="button-cancel-add-prayer">
-              Cancel
-            </Button>
-            <Button
-              className="bg-brand-gold hover:bg-brand-gold/90 text-brand-navy"
-              onClick={() => {
-                toast({ title: "Prayer added", description: "Prayer queued for audio processing." });
-                setShowAdd(false);
-              }}
-              data-testid="button-save-new-prayer"
-            >
-              Save Prayer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AdminShell>
   );
 }
 
-/* ---------- Categories ---------- */
-
-export function AdminCategories() {
-  return (
-    <AdminShell
-      title="Categories"
-      subtitle={`${categories.length} prayer categories`}
-      actions={
-        <Button
-          className="bg-brand-gold hover:bg-brand-gold/90 text-brand-navy"
-          data-testid="button-add-category"
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Category
-        </Button>
-      }
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((c) => {
-          const count = prayers.filter((p) => p.categorySlug === c.slug).length;
-          return (
-            <Card key={c.slug} className="hover-elevate transition-all" data-testid={`card-category-${c.slug}`}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-serif text-base">{c.name}</h3>
-                  <Badge variant="secondary">{count} prayers</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{c.description}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </AdminShell>
-  );
-}
-
-/* ---------- Custom Requests ---------- */
+/* ---------- Custom Requests (read-only, server intake) ---------- */
 
 export function AdminCustomRequests() {
-  const [requests, setRequests] = useState(mockCustomRequests);
-  const [selected, setSelected] = useState<typeof mockCustomRequests[0] | null>(null);
-  const { toast } = useToast();
-
-  const updateStatus = (id: string, status: typeof mockCustomRequests[0]["status"]) => {
-    setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)));
-    toast({ title: "Status updated", description: `${id} → ${status}` });
-  };
-
   return (
     <AdminShell
       title="Custom Prayer Requests"
       subtitle="Personalized prayer commissions from customers"
     >
       <Card>
-        <CardContent className="p-6">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Recipient</TableHead>
-                  <TableHead>Theme</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {requests.map((r) => (
-                  <TableRow key={r.id} data-testid={`row-custom-request-${r.id}`}>
-                    <TableCell className="font-mono text-xs">{r.id}</TableCell>
-                    <TableCell className="text-sm">{r.userName}</TableCell>
-                    <TableCell className="text-sm">{r.email}</TableCell>
-                    <TableCell className="text-sm max-w-[200px] truncate">{r.description}</TableCell>
-                    <TableCell>
-                      <Select
-                        value={r.status}
-                        onValueChange={(v) => updateStatus(r.id, v as any)}
-                      >
-                        <SelectTrigger className="h-8 w-[130px]" data-testid={`select-status-${r.id}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{r.date}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelected(r)}
-                        data-testid={`button-view-request-${r.id}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent className="p-8 text-center text-sm text-muted-foreground">
+          Incoming custom prayer requests are emailed to the site owner and stored in the
+          server&apos;s in-memory queue. Connect a CRM or persistent store to manage them here.
         </CardContent>
       </Card>
-
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-lg">
-              Request {selected?.id}
-            </DialogTitle>
-            <DialogDescription>From {selected?.userName}</DialogDescription>
-          </DialogHeader>
-          {selected && (
-            <div className="space-y-3 text-sm">
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">From</div>
-                <div>{selected.userName} &lt;{selected.email}&gt;</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Category</div>
-                <div>{categories.find((c) => c.slug === selected.categorySlug)?.name || selected.categorySlug}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Tone</div>
-                <div className="flex flex-wrap gap-1">
-                  {selected.preferredTone.map((t) => (
-                    <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Description</div>
-                <p className="text-muted-foreground italic">"{selected.description}"</p>
-              </div>
-              <div className="flex justify-between pt-2 border-t">
-                <span className="text-muted-foreground">Audio requested</span>
-                <span className="font-medium">{selected.wantAudio ? "Yes" : "No"}</span>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelected(null)} data-testid="button-close-request">
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </AdminShell>
-  );
-}
-
-/* ---------- Orders ---------- */
-
-export function AdminOrders() {
-  const [filter, setFilter] = useState<string>("all");
-  const filtered = filter === "all" ? mockOrders : mockOrders.filter((o) => o.paymentStatus === filter);
-
-  return (
-    <AdminShell
-      title="Orders"
-      subtitle={`${mockOrders.length} total orders`}
-      actions={
-        <Button variant="outline" data-testid="button-export-orders">
-          <Download className="h-4 w-4 mr-2" /> Export CSV
-        </Button>
-      }
-    >
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-[160px]" data-testid="select-order-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All orders</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((o) => {
-                  const pp = prayers.find((pr) => pr.slug === o.prayerSlug);
-                  return (
-                  <TableRow key={o.id} data-testid={`row-order-${o.id}`}>
-                    <TableCell className="font-mono text-xs">{o.id}</TableCell>
-                    <TableCell>{o.userName}</TableCell>
-                    <TableCell className="text-sm max-w-[220px] truncate">{pp?.title || o.prayerSlug}</TableCell>
-                    <TableCell className="text-xs uppercase tracking-widest text-muted-foreground">
-                      {o.downloadStatus}
-                    </TableCell>
-                    <TableCell>${o.amount}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          o.paymentStatus === "paid"
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                            : o.paymentStatus === "refunded"
-                              ? "bg-red-500/15 text-red-700 dark:text-red-400"
-                              : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                        }
-                      >
-                        {o.paymentStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{o.date.slice(0, 10)}</TableCell>
-                  </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </AdminShell>
-  );
-}
-
-/* ---------- Users ---------- */
-
-export function AdminUsers() {
-  return (
-    <AdminShell title="Users" subtitle={`${mockUsers.length} registered users`}>
-      <Card>
-        <CardContent className="p-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Orders</TableHead>
-                <TableHead>Spent</TableHead>
-                <TableHead>Joined</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockUsers.map((u) => (
-                <TableRow key={u.id} data-testid={`row-user-${u.id}`}>
-                  <TableCell className="font-medium">{u.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={
-                        u.role === "admin"
-                          ? "bg-brand-gold/15 text-brand-gold"
-                          : ""
-                      }
-                    >
-                      {u.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{u.totalPurchases}</TableCell>
-                  <TableCell>${u.totalPurchases * 7}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{u.joined}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </AdminShell>
-  );
-}
-
-/* ---------- Analytics ---------- */
-
-export function AdminAnalytics() {
-  return (
-    <AdminShell title="Analytics" subtitle="Performance metrics and trends">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">User Growth (12 months)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={userGrowth}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="users"
-                    stroke="#6B7280"
-                    strokeWidth={2}
-                    dot={{ fill: "#6B7280", r: 3 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Top Categories by Sales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={popularCategories} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" fontSize={11} width={120} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#111111" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Revenue Detail</CardTitle>
-            <CardDescription>Daily revenue across the last 30 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenue30d}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Bar dataKey="revenue" fill="#111111" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </AdminShell>
   );
 }
@@ -1080,16 +352,20 @@ export function AdminSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="font-serif text-lg">Pricing</CardTitle>
+              <CardDescription>
+                $7 per prayer, $27/month subscription. Promotion code 777 grants 100% off the
+                monthly subscription. Set the live values via Stripe Dashboard.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 max-w-xl">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="prayer-price">Standard Prayer Price</Label>
+                  <Label htmlFor="prayer-price">Prayer Price (USD)</Label>
                   <Input id="prayer-price" type="number" defaultValue="7" data-testid="input-prayer-price" />
                 </div>
                 <div>
-                  <Label htmlFor="custom-price">Custom Prayer Price</Label>
-                  <Input id="custom-price" type="number" defaultValue="10" data-testid="input-custom-price" />
+                  <Label htmlFor="sub-price">Subscription / month (USD)</Label>
+                  <Input id="sub-price" type="number" defaultValue="27" data-testid="input-sub-price" />
                 </div>
               </div>
               <div>
@@ -1113,11 +389,11 @@ export function AdminSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="font-serif text-lg">Integrations</CardTitle>
-              <CardDescription>Connect Stripe, email, and storage providers</CardDescription>
+              <CardDescription>Stripe, email, storage</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { name: "Stripe", desc: "Payment processing", status: "Configure via STRIPE_SECRET_KEY" },
+                { name: "Stripe", desc: "Payment processing + promo codes (777)", status: "Configure via STRIPE_SECRET_KEY" },
                 { name: "Resend", desc: "Transactional email", status: "Configure via RESEND_API_KEY" },
                 { name: "AWS S3", desc: "Audio file storage", status: "Configure via S3_* env vars" },
               ].map((i) => (
@@ -1173,7 +449,7 @@ export function AdminSettings() {
   );
 }
 
-/* ---------- Admin auth (separate from regular user auth) ---------- */
+/* ---------- Admin auth ---------- */
 
 type AdminIdentity = { username: string } | null;
 
@@ -1214,10 +490,7 @@ function useAdminAuth() {
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch("/api/admin/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => {});
+    await fetch("/api/admin/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
     setAdmin(null);
   }, []);
 
@@ -1272,16 +545,11 @@ function AdminLoginGate({
         <CardHeader>
           <div className="flex items-center gap-2 text-brand-gold">
             <ShieldCheck className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-widest font-semibold">
-              Admin Console
-            </span>
+            <span className="text-xs uppercase tracking-widest font-semibold">Admin Console</span>
           </div>
-          <CardTitle className="font-serif text-xl mt-2">
-            Sign in to upload prayers
-          </CardTitle>
+          <CardTitle className="font-serif text-xl mt-2">Sign in to upload prayers</CardTitle>
           <CardDescription>
-            This area is restricted. Use the admin credentials provided by the
-            site owner.
+            This area is restricted. Use the admin credentials provided by the site owner.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1310,11 +578,7 @@ function AdminLoginGate({
               />
             </div>
             {error && (
-              <div
-                className="text-sm text-red-600 dark:text-red-400"
-                data-testid="text-admin-login-error"
-                role="alert"
-              >
+              <div className="text-sm text-red-600 dark:text-red-400" data-testid="text-admin-login-error" role="alert">
                 {error}
               </div>
             )}
@@ -1340,13 +604,20 @@ function AdminLoginGate({
   );
 }
 
-/* ---------- Uploads (MP3 prayers) ---------- */
+/* ---------- Uploads ---------- */
 
 type UploadedPrayerItem = {
   id: number;
   title: string;
   categorySlug: string;
   description: string;
+  bibleTheme: string;
+  supportingScripture: string;
+  aboutPrayer: string;
+  whatsIncluded: string;
+  scriptureQuote: string;
+  scriptureReference: string;
+  categoryDescription: string;
   audioUrl: string;
   audioOriginalName: string;
   audioMimeType: string;
@@ -1387,9 +658,20 @@ function AdminUploadsAuthenticated({
   const { toast } = useToast();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const initialCategorySlug = categories[0]?.slug || "";
+  const initialCategoryDescription = categories[0]?.description || "";
+
   const [title, setTitle] = useState("");
-  const [categorySlug, setCategorySlug] = useState<string>(categories[0]?.slug || "");
+  const [categorySlug, setCategorySlug] = useState<string>(initialCategorySlug);
+  const [categoryDescription, setCategoryDescription] = useState<string>(initialCategoryDescription);
   const [description, setDescription] = useState("");
+  const [bibleTheme, setBibleTheme] = useState("");
+  const [supportingScripture, setSupportingScripture] = useState("");
+  const [aboutPrayer, setAboutPrayer] = useState("");
+  const [whatsIncluded, setWhatsIncluded] = useState("");
+  const [scriptureQuote, setScriptureQuote] = useState("");
+  const [scriptureReference, setScriptureReference] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -1413,10 +695,23 @@ function AdminUploadsAuthenticated({
     onError: (e: any) => toast({ title: "Could not remove", description: e?.message || "", variant: "destructive" }),
   });
 
+  function handleCategoryChange(slug: string) {
+    setCategorySlug(slug);
+    const next = categories.find((c) => c.slug === slug);
+    if (next) setCategoryDescription(next.description);
+  }
+
   const reset = () => {
     setTitle("");
-    setCategorySlug(categories[0]?.slug || "");
+    setCategorySlug(initialCategorySlug);
+    setCategoryDescription(initialCategoryDescription);
     setDescription("");
+    setBibleTheme("");
+    setSupportingScripture("");
+    setAboutPrayer("");
+    setWhatsIncluded("");
+    setScriptureQuote("");
+    setScriptureReference("");
     setFile(null);
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -1437,6 +732,13 @@ function AdminUploadsAuthenticated({
       fd.append("title", title.trim());
       fd.append("categorySlug", categorySlug);
       fd.append("description", description.trim());
+      fd.append("bibleTheme", bibleTheme.trim());
+      fd.append("supportingScripture", supportingScripture.trim());
+      fd.append("aboutPrayer", aboutPrayer.trim());
+      fd.append("whatsIncluded", whatsIncluded.trim());
+      fd.append("scriptureQuote", scriptureQuote.trim());
+      fd.append("scriptureReference", scriptureReference.trim());
+      fd.append("categoryDescription", categoryDescription.trim());
       fd.append("audio", file);
       const res = await fetch("/api/uploaded-prayers", { method: "POST", body: fd });
       const json = await res.json();
@@ -1463,7 +765,7 @@ function AdminUploadsAuthenticated({
   return (
     <AdminShell
       title="Upload MP3 Prayers"
-      subtitle="Add an audio prayer with category, title, and description. It will appear in the public Prayer Library."
+      subtitle="Add a Spirit-led prayer with its Bible theme, scripture, and notes."
       actions={
         <div className="flex items-center gap-3">
           <Badge
@@ -1489,10 +791,10 @@ function AdminUploadsAuthenticated({
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2" data-testid="card-upload-form">
+        <Card className="lg:col-span-3" data-testid="card-upload-form">
           <CardHeader>
             <CardTitle className="font-serif text-lg">New audio prayer</CardTitle>
-            <CardDescription>MP3 only. Max 50&nbsp;MB.</CardDescription>
+            <CardDescription>MP3 only. Max 50&nbsp;MB. All structured fields are saved with the prayer.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4" data-testid="form-upload-prayer">
@@ -1502,37 +804,126 @@ function AdminUploadsAuthenticated({
                   id="up-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Evening Surrender"
+                  placeholder="e.g. Morning Surrender — Let the Spirit Lead"
                   required
                   data-testid="input-upload-title"
                 />
               </div>
+
               <div>
-                <Label htmlFor="up-cat">Category</Label>
-                <Select value={categorySlug} onValueChange={setCategorySlug}>
-                  <SelectTrigger id="up-cat" data-testid="select-upload-category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.slug} value={c.slug}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="up-bible-theme">Bible Theme</Label>
+                <Textarea
+                  id="up-bible-theme"
+                  rows={2}
+                  value={bibleTheme}
+                  onChange={(e) => setBibleTheme(e.target.value)}
+                  placeholder="e.g. Beginning the day yielded, listening, and ready."
+                  data-testid="input-upload-bible-theme"
+                />
               </div>
+
               <div>
-                <Label htmlFor="up-desc">Description</Label>
+                <Label htmlFor="up-supporting-scripture">Supporting Scripture</Label>
+                <Textarea
+                  id="up-supporting-scripture"
+                  rows={3}
+                  value={supportingScripture}
+                  onChange={(e) => setSupportingScripture(e.target.value)}
+                  placeholder={`Lamentations 3:22–23\nRomans 8:14\nPsalm 5:3`}
+                  data-testid="input-upload-supporting-scripture"
+                />
+                <p className="text-xs text-muted-foreground mt-1">One reference per line.</p>
+              </div>
+
+              <div>
+                <Label htmlFor="up-about">About this prayer</Label>
+                <Textarea
+                  id="up-about"
+                  rows={3}
+                  value={aboutPrayer}
+                  onChange={(e) => setAboutPrayer(e.target.value)}
+                  placeholder="e.g. Open your morning with stillness…"
+                  data-testid="input-upload-about-prayer"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="up-included">What’s included</Label>
+                <Textarea
+                  id="up-included"
+                  rows={3}
+                  value={whatsIncluded}
+                  onChange={(e) => setWhatsIncluded(e.target.value)}
+                  placeholder={`Full audio prayer (8 min)\nWritten transcript\n7-day morning rhythm`}
+                  data-testid="input-upload-whats-included"
+                />
+                <p className="text-xs text-muted-foreground mt-1">One bullet per line.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <Label htmlFor="up-quote">Scripture Quote</Label>
+                  <Textarea
+                    id="up-quote"
+                    rows={3}
+                    value={scriptureQuote}
+                    onChange={(e) => setScriptureQuote(e.target.value)}
+                    placeholder="e.g. “Likewise the Spirit also helps…”"
+                    data-testid="input-upload-scripture-quote"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="up-quote-ref">Scripture Reference</Label>
+                  <Input
+                    id="up-quote-ref"
+                    value={scriptureReference}
+                    onChange={(e) => setScriptureReference(e.target.value)}
+                    placeholder="e.g. ROMANS 8:26"
+                    data-testid="input-upload-scripture-reference"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="up-cat">Category</Label>
+                  <Select value={categorySlug} onValueChange={handleCategoryChange}>
+                    <SelectTrigger id="up-cat" data-testid="select-upload-category">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c.slug} value={c.slug}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="up-cat-desc">Category description</Label>
+                  <Input
+                    id="up-cat-desc"
+                    value={categoryDescription}
+                    onChange={(e) => setCategoryDescription(e.target.value)}
+                    placeholder="e.g. Starting the day with surrender and purpose."
+                    data-testid="input-upload-category-description"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="up-desc">Short description (used on cards)</Label>
                 <Textarea
                   id="up-desc"
-                  rows={4}
+                  rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="A short description of this prayer."
                   data-testid="input-upload-description"
                 />
               </div>
+
               <div>
                 <Label htmlFor="up-file">MP3 file</Label>
                 <input
@@ -1557,7 +948,7 @@ function AdminUploadsAuthenticated({
                   className="bg-foreground text-background hover:bg-foreground/90"
                   data-testid="button-upload-submit"
                 >
-                  <UploadCloud className="h-4 w-4 mr-2" />
+                  <UploadIcon className="h-4 w-4 mr-2" />
                   {submitting ? "Uploading…" : "Upload prayer"}
                 </Button>
                 <Button
@@ -1574,7 +965,7 @@ function AdminUploadsAuthenticated({
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3" data-testid="card-uploaded-list">
+        <Card className="lg:col-span-2" data-testid="card-uploaded-list">
           <CardHeader>
             <CardTitle className="font-serif text-lg">Uploaded prayers</CardTitle>
             <CardDescription>
@@ -1597,7 +988,7 @@ function AdminUploadsAuthenticated({
                       data-testid={`row-uploaded-prayer-${it.id}`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <Music className="h-4 w-4 text-foreground/70" />
                             <div className="font-medium truncate" data-testid={`text-uploaded-title-${it.id}`}>
@@ -1606,9 +997,25 @@ function AdminUploadsAuthenticated({
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
                             {cat?.name || it.categorySlug} · {formatBytes(it.audioSize)}
+                            {it.durationSeconds ? ` · ${formatDuration(it.durationSeconds)}` : ""}
                           </div>
-                          {it.description ? (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{it.description}</p>
+                          {it.bibleTheme ? (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              <span className="uppercase tracking-wider text-[10px] text-brand-gold mr-1">Theme:</span>
+                              <span className="italic line-clamp-1">{it.bibleTheme}</span>
+                            </div>
+                          ) : null}
+                          {it.supportingScripture ? (
+                            <div className="text-xs text-muted-foreground line-clamp-1">
+                              <span className="uppercase tracking-wider text-[10px] text-brand-gold mr-1">Scripture:</span>
+                              {it.supportingScripture.replace(/\r?\n/g, " · ")}
+                            </div>
+                          ) : null}
+                          {it.scriptureReference ? (
+                            <div className="text-xs text-muted-foreground line-clamp-1">
+                              <span className="uppercase tracking-wider text-[10px] text-brand-gold mr-1">Quote ref:</span>
+                              {it.scriptureReference}
+                            </div>
                           ) : null}
                         </div>
                         <Button
@@ -1640,3 +1047,4 @@ function AdminUploadsAuthenticated({
     </AdminShell>
   );
 }
+

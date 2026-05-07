@@ -56,19 +56,11 @@ export function Navbar() {
 
           {user || serverUser ? (
             <div className="hidden md:flex items-center gap-2">
-              {serverUser ? (
-                <Link href="/account">
-                  <Button variant="outline" size="sm" data-testid="button-account" className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold">
-                    Account
-                  </Button>
-                </Link>
-              ) : (
-                <Link href={user!.role === "admin" ? "/admin" : "/dashboard"}>
-                  <Button variant="outline" size="sm" data-testid="button-dashboard" className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold">
-                    {user!.role === "admin" ? "Admin" : "Dashboard"}
-                  </Button>
-                </Link>
-              )}
+              <Link href="/account">
+                <Button variant="outline" size="sm" data-testid="button-account" className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold">
+                  Account
+                </Button>
+              </Link>
               <Button variant="ghost" size="sm" onClick={signOut} data-testid="button-signout">Sign out</Button>
             </div>
           ) : (
@@ -115,15 +107,9 @@ export function Navbar() {
             <div className="h-px bg-brand-gold/20 my-2" />
             {user || serverUser ? (
               <>
-                {serverUser ? (
-                  <Link href="/account" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium" data-testid="link-mobile-account">
-                    Account
-                  </Link>
-                ) : (
-                  <Link href={user!.role === "admin" ? "/admin" : "/dashboard"} onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium">
-                    {user!.role === "admin" ? "Admin" : "Dashboard"}
-                  </Link>
-                )}
+                <Link href="/account" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium" data-testid="link-mobile-account">
+                  Account
+                </Link>
                 <button onClick={() => { signOut(); setOpen(false); }} className="text-left px-3 py-2 rounded-md text-sm hover-elevate font-medium">Sign out</button>
               </>
             ) : (

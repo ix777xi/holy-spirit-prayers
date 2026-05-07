@@ -230,23 +230,31 @@ export async function registerRoutes(
     res.json({ ok: true, message: "Enjoy your free prayer." });
   });
 
-  // Stub: list prayers (frontend uses local seed; this endpoint is for parity)
+  // Public counts (used by health/dashboards if needed). Real prayer data is
+  // served via /api/uploaded-prayers.
   app.get("/api/prayers", async (_req, res) => {
-    res.json({ ok: true, source: "seed", count: 18 });
+    try {
+      const count = db.select().from(uploadedPrayers).all().length;
+      res.json({ ok: true, source: "uploaded", count });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err?.message || "Failed" });
+    }
   });
 
-  app.get("/api/categories", async (_req, res) => {
-    res.json({ ok: true, source: "seed", count: 24 });
-  });
-
-  // Admin dashboard summary stub
+  // Admin dashboard summary
   app.get("/api/admin/dashboard", async (_req, res) => {
-    res.json({
-      ok: true,
-      newsletterSignups: memory.newsletter.length,
-      contactSubmissions: memory.contact.length,
-      customPrayerRequests: memory.customPrayers.length,
-    });
+    try {
+      const uploadedCount = db.select().from(uploadedPrayers).all().length;
+      res.json({
+        ok: true,
+        uploadedPrayers: uploadedCount,
+        newsletterSignups: memory.newsletter.length,
+        contactSubmissions: memory.contact.length,
+        customPrayerRequests: memory.customPrayers.length,
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err?.message || "Failed" });
+    }
   });
 
   // ----- Uploaded prayers (admin upload + library listing) -----
@@ -279,6 +287,13 @@ export async function registerRoutes(
           title: r.title,
           categorySlug: r.categorySlug,
           description: r.description,
+          bibleTheme: r.bibleTheme,
+          supportingScripture: r.supportingScripture,
+          aboutPrayer: r.aboutPrayer,
+          whatsIncluded: r.whatsIncluded,
+          scriptureQuote: r.scriptureQuote,
+          scriptureReference: r.scriptureReference,
+          categoryDescription: r.categoryDescription,
           audioUrl: access ? `/api/uploaded-prayers/${r.id}/stream` : null,
           downloadUrl: access ? `/api/uploaded-prayers/${r.id}/download` : null,
           audioOriginalName: r.audioOriginalName,
@@ -350,6 +365,13 @@ export async function registerRoutes(
           title: z.string().min(1).max(200),
           categorySlug: z.string().min(1).max(80),
           description: z.string().max(2000).optional().default(""),
+          bibleTheme: z.string().max(2000).optional().default(""),
+          supportingScripture: z.string().max(4000).optional().default(""),
+          aboutPrayer: z.string().max(4000).optional().default(""),
+          whatsIncluded: z.string().max(4000).optional().default(""),
+          scriptureQuote: z.string().max(4000).optional().default(""),
+          scriptureReference: z.string().max(200).optional().default(""),
+          categoryDescription: z.string().max(2000).optional().default(""),
         })
         .safeParse(fields);
 
@@ -378,6 +400,13 @@ export async function registerRoutes(
           title: meta.data.title,
           categorySlug: meta.data.categorySlug,
           description: meta.data.description ?? "",
+          bibleTheme: meta.data.bibleTheme ?? "",
+          supportingScripture: meta.data.supportingScripture ?? "",
+          aboutPrayer: meta.data.aboutPrayer ?? "",
+          whatsIncluded: meta.data.whatsIncluded ?? "",
+          scriptureQuote: meta.data.scriptureQuote ?? "",
+          scriptureReference: meta.data.scriptureReference ?? "",
+          categoryDescription: meta.data.categoryDescription ?? "",
           audioFilename: stored,
           audioOriginalName: safeOriginal,
           audioMimeType: file.contentType || "audio/mpeg",
@@ -395,6 +424,13 @@ export async function registerRoutes(
           title: inserted.title,
           categorySlug: inserted.categorySlug,
           description: inserted.description,
+          bibleTheme: inserted.bibleTheme,
+          supportingScripture: inserted.supportingScripture,
+          aboutPrayer: inserted.aboutPrayer,
+          whatsIncluded: inserted.whatsIncluded,
+          scriptureQuote: inserted.scriptureQuote,
+          scriptureReference: inserted.scriptureReference,
+          categoryDescription: inserted.categoryDescription,
           audioUrl: `/api/uploaded-prayers/${inserted.id}/stream`,
           downloadUrl: `/api/uploaded-prayers/${inserted.id}/download`,
           audioOriginalName: inserted.audioOriginalName,
@@ -720,6 +756,7 @@ export async function registerRoutes(
         params.append("mode", "payment");
         params.append("success_url", successUrl);
         params.append("cancel_url", cancelUrl);
+        params.append("allow_promotion_codes", "true");
         params.append("client_reference_id", String(userId));
         params.append("metadata[userId]", String(userId));
         params.append("metadata[uploadedPrayerId]", String(id));

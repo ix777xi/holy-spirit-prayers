@@ -53,9 +53,11 @@ Add the following in **Railway → Variables**. None of these are required for t
 | ------------------------- | ------------------------------------------------------- | ---------------------- |
 | `PORT`                    | Set automatically by Railway (server already reads it)  | Auto                   |
 | `NODE_ENV`                | `production`                                            | Yes (set by Railway)   |
-| `STRIPE_SECRET_KEY`       | Stripe server key (`sk_live_...` or `sk_test_...`)      | Future                 |
-| `STRIPE_WEBHOOK_SECRET`   | Webhook signing secret for `/api/stripe/webhook`        | Future                 |
+| `STRIPE_SECRET_KEY`       | Stripe server key (`sk_live_...` or `sk_test_...`)      | Yes for live payments  |
+| `STRIPE_WEBHOOK_SECRET`   | Webhook signing secret for `/api/stripe/webhook`        | Yes for live payments  |
 | `STRIPE_PUBLISHABLE_KEY`  | Stripe public key (frontend, prefix `VITE_`)            | Future                 |
+| `STRIPE_MONTHLY_PRICE_ID` | Optional Price ID for the $27/month subscription        | Optional               |
+| `STRIPE_PRAYER_PRICE_ID`  | Optional Price ID for the $7 one-time prayer purchase   | Optional               |
 | `SESSION_SECRET`          | Reserved for future signed-cookie/JWT session work      | Optional               |
 | `RESEND_API_KEY`          | Transactional email (or `SENDGRID_API_KEY`)             | Future                 |
 | `EMAIL_FROM`              | e.g. `prayers@holyspiritprayers.app`                    | Future                 |
@@ -260,14 +262,41 @@ honoured as a fallback) and insert/upsert a `prayer_purchases` row with
 `user_subscriptions`. `customer.subscription.{updated,deleted}` flow into the
 same table so cancellations revoke library access immediately.
 
+### Stripe promotion codes
+
+Both Stripe Checkout sessions are created with `allow_promotion_codes=true`,
+so customers see a **Add promotion code** field in the Stripe-hosted Checkout
+page for both:
+
+- the $27/month subscription (`/api/create-subscription-checkout-session`)
+- the $7 one-time prayer purchase
+  (`/api/uploaded-prayers/:id/create-checkout-session`)
+
+A live Stripe coupon and promotion code are already configured:
+
+| Resource         | Value                                |
+| ---------------- | ------------------------------------ |
+| Coupon ID        | `XZZ7DYLz`                           |
+| Promotion code   | `777` (active, 100% off, forever)    |
+| Promotion ID     | `promo_1TURfn0UQQxbBLNItYrq0gEE`     |
+
+Customers can enter `777` at the Stripe Checkout page to subscribe for free.
+Manage / rotate the code from **Stripe Dashboard → Products → Coupons**.
+
 ---
 
 ## Demo Tips
 
-- **Admin access:** sign up with any email containing `admin` (e.g. `admin@local.dev`). The `AuthProvider` promotes that account to the admin role.
-- **Free prayer:** the slug `morning-surrender-let-the-spirit-lead` is the seeded free prayer. Email-gated unlock simulates download.
-- **Audio player:** simulated playback timer (no real audio file shipped). Wire to an `<audio>` element + S3 signed URLs when ready.
-- **Purchases:** the "Purchase" button on a prayer detail mock-completes the order. Replace with Stripe Checkout in `client/src/pages/prayer-detail.tsx` and the corresponding server route.
+- **Admin upload console:** sign in at `/#/admin/uploads` with the admin
+  credentials (default `Caleb` / `HeartNoah`, override via `ADMIN_USERNAME` /
+  `ADMIN_PASSWORD`). The Prayer Library and homepage render only what has
+  been uploaded — there is no seed data shipped.
+- **Promotion code 777:** active in Stripe (100% off the monthly
+  subscription). Customers enter it at the Stripe Checkout page during
+  subscription or one-time purchase.
+- **Audio playback:** uses native `<audio>` elements pointed at the
+  protected `/api/uploaded-prayers/:id/stream` endpoint — only entitled users
+  receive a working URL.
 
 ---
 
@@ -287,9 +316,9 @@ The current `routes.ts` uses an **in-memory store** that resets on restart. That
 
 | Feature                 | Status                                                              |
 | ----------------------- | ------------------------------------------------------------------- |
-| Stripe checkout         | Stub — purchase button mocks completion                             |
+| Stripe checkout         | Live — Checkout sessions for $7 prayers and $27/mo subs (promo 777) |
 | Authentication          | Live — email + password (scrypt-hashed) with in-memory sessions      |
-| Audio playback          | Simulated 1-Hz progress timer                                       |
+| Audio playback          | Live — native `<audio>` against gated `/api/uploaded-prayers/:id/stream` |
 | Email delivery          | Logs to memory; wire Resend/SendGrid in `server/routes.ts`          |
 | Auth persistence        | In-memory; reset on refresh (no storage allowed in iframe sandbox)  |
 | File downloads          | UI flow only; no S3 signed URLs yet                                 |

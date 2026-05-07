@@ -29,6 +29,13 @@ sqlite.exec(`
     title TEXT NOT NULL,
     category_slug TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
+    bible_theme TEXT NOT NULL DEFAULT '',
+    supporting_scripture TEXT NOT NULL DEFAULT '',
+    about_prayer TEXT NOT NULL DEFAULT '',
+    whats_included TEXT NOT NULL DEFAULT '',
+    scripture_quote TEXT NOT NULL DEFAULT '',
+    scripture_reference TEXT NOT NULL DEFAULT '',
+    category_description TEXT NOT NULL DEFAULT '',
     audio_filename TEXT NOT NULL,
     audio_original_name TEXT NOT NULL DEFAULT '',
     audio_mime_type TEXT NOT NULL DEFAULT 'audio/mpeg',
@@ -89,6 +96,13 @@ tryAddColumn(`ALTER TABLE users ADD COLUMN email TEXT;`);
 tryAddColumn(`ALTER TABLE users ADD COLUMN name TEXT;`);
 tryAddColumn(`ALTER TABLE users ADD COLUMN picture_url TEXT;`);
 tryAddColumn(`ALTER TABLE users ADD COLUMN created_at TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN bible_theme TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN supporting_scripture TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN about_prayer TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN whats_included TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN scripture_quote TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN scripture_reference TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN category_description TEXT NOT NULL DEFAULT '';`);
 
 export const db = drizzle(sqlite);
 
