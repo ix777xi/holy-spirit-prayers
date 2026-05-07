@@ -121,17 +121,39 @@ Admin: `/#/admin`, `/#/admin/prayers`, `/#/admin/categories`,
 
 ### API endpoints
 
-| Method | Path                       | Purpose                      |
-| ------ | -------------------------- | ---------------------------- |
-| GET    | `/api/health`              | Liveness check               |
-| POST   | `/api/email/signup`        | Newsletter signup            |
-| POST   | `/api/contact`             | Contact form                 |
-| POST   | `/api/custom-prayers`      | Custom prayer order intake   |
-| POST   | `/api/free-prayer/unlock`  | Email-gate the free prayer   |
-| GET    | `/api/prayers`             | Catalog (currently seed)     |
-| GET    | `/api/categories`          | Categories (currently seed)  |
-| GET    | `/api/admin/dashboard`     | Submission counts            |
-| POST   | `/api/stripe/webhook`      | Stripe webhook stub          |
+| Method | Path                                           | Purpose                                       |
+| ------ | ---------------------------------------------- | --------------------------------------------- |
+| GET    | `/api/health`                                  | Liveness check                                |
+| POST   | `/api/email/signup`                            | Newsletter signup                             |
+| POST   | `/api/contact`                                 | Contact form                                  |
+| POST   | `/api/custom-prayers`                          | Custom prayer order intake                    |
+| POST   | `/api/free-prayer/unlock`                      | Email-gate the free prayer                    |
+| GET    | `/api/prayers`                                 | Catalog (currently seed)                      |
+| GET    | `/api/categories`                              | Categories (currently seed)                   |
+| GET    | `/api/admin/dashboard`                         | Submission counts                             |
+| GET    | `/api/uploaded-prayers`                        | List admin-uploaded MP3 prayers               |
+| POST   | `/api/uploaded-prayers`                        | Admin MP3 upload (multipart/form-data)        |
+| DELETE | `/api/uploaded-prayers/:id`                    | Delete an uploaded prayer                     |
+| POST   | `/api/create-subscription-checkout-session`    | Start a $27/month Stripe Checkout subscription|
+| POST   | `/api/stripe/webhook`                          | Stripe webhook stub                           |
+
+### Stripe subscription setup
+
+The homepage exposes a "Subscribe Monthly · $27/month" CTA that posts to
+`/api/create-subscription-checkout-session`. The server creates a Stripe Checkout
+session in `subscription` mode and returns the redirect URL.
+
+To enable it, set the following in your environment (Railway → Variables, or a
+local `.env` based on `.env.example`):
+
+| Variable                  | Required | Purpose                                                                                          |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `STRIPE_SECRET_KEY`       | Yes      | Stripe server key (`sk_live_...` or `sk_test_...`)                                               |
+| `STRIPE_MONTHLY_PRICE_ID` | Optional | Price ID for the $27/month plan. If unset, the server uses inline `price_data` (USD 2700/month). |
+| `BASE_URL`                | Optional | Public origin used in `success_url` / `cancel_url`. Falls back to the request Origin/Host.       |
+
+Never commit real secret keys — only `STRIPE_SECRET_KEY` is read from
+`process.env`. The endpoint returns `503` with a clear error if it isn't set.
 
 ---
 

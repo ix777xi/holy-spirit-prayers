@@ -6,10 +6,9 @@ import { useTheme, useAuth } from "@/lib/app-context";
 import { Button } from "@/components/ui/button";
 
 const NAV_LINKS = [
-  { href: "/library", label: "Library" },
-  { href: "/custom-prayer", label: "Custom Prayer" },
-  { href: "/free-prayer", label: "Free Prayer" },
-  { href: "/about", label: "About" },
+  { href: "/", label: "Home" },
+  { href: "/library", label: "Prayer Library" },
+  { href: "/custom-prayer", label: "Request Prayer" },
 ];
 
 export function Navbar() {
@@ -19,13 +18,13 @@ export function Navbar() {
   const { user, signOut } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/92 backdrop-blur supports-[backdrop-filter]:bg-background/82">
-      <div className="mx-auto max-w-7xl px-4 md:px-6 min-h-24 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full border-b border-brand-gold/30 bg-[hsl(var(--background))]/92 backdrop-blur supports-[backdrop-filter]:bg-[hsl(var(--background))]/80">
+      <div className="mx-auto max-w-7xl px-4 md:px-8 h-20 md:h-24 flex items-center justify-between gap-4">
         <Link href="/" className="hover-elevate rounded-md px-2 py-2 -mx-2" data-testid="link-home">
-          <Logo size="sm" orientation="stacked" />
+          <Logo size="sm" orientation="horizontal" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
+        <nav className="hidden md:flex items-center gap-1 ml-auto" aria-label="Primary">
           {NAV_LINKS.map((l) => {
             const active = location === l.href || (l.href !== "/" && location.startsWith(l.href));
             return (
@@ -33,8 +32,10 @@ export function Navbar() {
                 key={l.href}
                 href={l.href}
                 data-testid={`link-${l.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  active ? "text-white bg-brand-gold" : "text-brand-navy dark:text-white hover:text-white hover:bg-brand-gold"
+                className={`px-3 py-2 rounded-md text-sm font-medium tracking-wide transition-colors ${
+                  active
+                    ? "text-brand-gold"
+                    : "text-foreground hover:text-brand-gold"
                 }`}
               >
                 {l.label}
@@ -43,7 +44,7 @@ export function Navbar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 md:ml-4">
           <button
             onClick={toggle}
             data-testid="button-theme-toggle"
@@ -56,23 +57,29 @@ export function Navbar() {
           {user ? (
             <div className="hidden md:flex items-center gap-2">
               <Link href={user.role === "admin" ? "/admin" : "/dashboard"}>
-                <Button variant="outline" size="sm" data-testid="button-dashboard">{user.role === "admin" ? "Admin" : "Dashboard"}</Button>
+                <Button variant="outline" size="sm" data-testid="button-dashboard" className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold">
+                  {user.role === "admin" ? "Admin" : "Dashboard"}
+                </Button>
               </Link>
               <Button variant="ghost" size="sm" onClick={signOut} data-testid="button-signout">Sign out</Button>
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-2">
-              <Link href="/login"><Button variant="ghost" size="sm" data-testid="button-login">Log in</Button></Link>
-              <Link href="/register">
-                <Button size="sm" className="bg-brand-gold hover:bg-brand-gold/90 text-white font-semibold" data-testid="button-register">
-                  Sign up
+              <Link href="/login">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-login"
+                  className="border-brand-gold/60 text-foreground hover:bg-brand-gold hover:text-white hover:border-brand-gold font-medium"
+                >
+                  Login
                 </Button>
               </Link>
             </div>
           )}
 
           <button
-            className="md:hidden rounded-md p-2 text-brand-navy dark:text-white hover:bg-brand-gold hover:text-white transition-colors"
+            className="md:hidden rounded-md p-2 text-foreground hover:bg-brand-gold/10 hover:text-brand-gold transition-colors"
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
             aria-expanded={open}
@@ -84,20 +91,20 @@ export function Navbar() {
       </div>
 
       {open ? (
-        <div className="md:hidden border-t border-border/60 bg-background">
+        <div className="md:hidden border-t border-brand-gold/20 bg-[hsl(var(--background))]">
           <nav className="px-4 py-3 flex flex-col gap-1" aria-label="Mobile">
             {NAV_LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-md text-sm font-medium text-brand-navy dark:text-white hover:bg-brand-gold hover:text-white transition-colors"
+                className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-brand-gold/10 hover:text-brand-gold transition-colors"
                 data-testid={`link-mobile-${l.label.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 {l.label}
               </Link>
             ))}
-            <div className="h-px bg-border my-2" />
+            <div className="h-px bg-brand-gold/20 my-2" />
             {user ? (
               <>
                 <Link href={user.role === "admin" ? "/admin" : "/dashboard"} onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium">
@@ -106,10 +113,14 @@ export function Navbar() {
                 <button onClick={() => { signOut(); setOpen(false); }} className="text-left px-3 py-2 rounded-md text-sm hover-elevate font-medium">Sign out</button>
               </>
             ) : (
-              <>
-                <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm font-medium text-brand-navy dark:text-white hover:bg-brand-gold hover:text-white transition-colors">Log in</Link>
-                <Link href="/register" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-semibold bg-brand-gold text-white">Sign up</Link>
-              </>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                data-testid="link-mobile-login"
+                className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-brand-gold/10 hover:text-brand-gold transition-colors"
+              >
+                Login
+              </Link>
             )}
           </nav>
         </div>

@@ -144,6 +144,17 @@ function safeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
 }
 
+function resolveBaseUrl(req: Request): string {
+  const envBase = (process.env.BASE_URL || "").replace(/\/+$/, "");
+  if (envBase) return envBase;
+  const origin = (req.headers.origin || "").toString().replace(/\/+$/, "");
+  if (origin && /^https?:\/\//i.test(origin)) return origin;
+  const proto = (req.headers["x-forwarded-proto"] || req.protocol || "http").toString().split(",")[0].trim();
+  const host = (req.headers["x-forwarded-host"] || req.headers.host || "").toString().split(",")[0].trim();
+  if (host) return `${proto}://${host}`;
+  return "http://localhost:5000";
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -360,6 +371,72 @@ export async function registerRoutes(
   app.post("/api/stripe/webhook", async (_req, res) => {
     // TODO: verify with STRIPE_WEBHOOK_SECRET, then dispatch on event.type
     res.json({ received: true, stub: true });
+  });
+
+  // Stripe subscription checkout — $27/month
+  app.post("/api/create-subscription-checkout-session", async (req: Request, res: Response) => {
+    try {
+      const secret = process.env.STRIPE_SECRET_KEY;
+      if (!secret) {
+        return res.status(503).json({
+          ok: false,
+          error:
+            "Stripe is not configured. Set STRIPE_SECRET_KEY in the server environment.",
+        });
+      }
+
+      const baseUrl = resolveBaseUrl(req);
+      const successUrl = `${baseUrl}/#/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${baseUrl}/#/?subscription=cancelled`;
+
+      const params = new URLSearchParams();
+      params.append("mode", "subscription");
+      params.append("success_url", successUrl);
+      params.append("cancel_url", cancelUrl);
+      params.append("allow_promotion_codes", "true");
+      params.append("billing_address_collection", "auto");
+
+      const priceId = process.env.STRIPE_MONTHLY_PRICE_ID;
+      if (priceId) {
+        params.append("line_items[0][price]", priceId);
+        params.append("line_items[0][quantity]", "1");
+      } else {
+        params.append("line_items[0][quantity]", "1");
+        params.append(
+          "line_items[0][price_data][product_data][name]",
+          "Holy Spirit Prayers Monthly Subscription",
+        );
+        params.append("line_items[0][price_data][currency]", "usd");
+        params.append("line_items[0][price_data][unit_amount]", "2700");
+        params.append("line_items[0][price_data][recurring][interval]", "month");
+      }
+
+      const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      });
+
+      const session = (await stripeRes.json()) as {
+        id?: string;
+        url?: string;
+        error?: { message?: string };
+      };
+
+      if (!stripeRes.ok || !session.url) {
+        return res.status(stripeRes.status || 500).json({
+          ok: false,
+          error: session.error?.message || "Stripe checkout session failed",
+        });
+      }
+
+      res.json({ ok: true, id: session.id, url: session.url });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err?.message || "Subscription checkout failed" });
+    }
   });
 
   return httpServer;
