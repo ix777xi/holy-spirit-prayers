@@ -65,3 +65,54 @@ export const userPrayers = sqliteTable(
 );
 
 export type UserPrayer = typeof userPrayers.$inferSelect;
+
+// Per-prayer one-time purchases (also used for general "entitlement" rows
+// regardless of payment provider). One row per (userId, uploadedPrayerId).
+export const prayerPurchases = sqliteTable(
+  "prayer_purchases",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id").notNull(),
+    uploadedPrayerId: integer("uploaded_prayer_id").notNull(),
+    stripeSessionId: text("stripe_session_id").notNull().default(""),
+    stripePaymentIntentId: text("stripe_payment_intent_id").notNull().default(""),
+    amountCents: integer("amount_cents").notNull().default(0),
+    currency: text("currency").notNull().default("usd"),
+    status: text("status").notNull().default("paid"),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => ({
+    uniqUserPrayerPurchase: uniqueIndex("prayer_purchases_user_prayer_idx").on(
+      t.userId,
+      t.uploadedPrayerId,
+    ),
+  }),
+);
+
+export type PrayerPurchase = typeof prayerPurchases.$inferSelect;
+
+// Recurring subscriptions. One row per Stripe subscription; userId may be 0
+// during the brief window between checkout completion and the subscription
+// being attached to a user (we always include client_reference_id so this is
+// rare in practice).
+export const userSubscriptions = sqliteTable(
+  "user_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id").notNull(),
+    stripeCustomerId: text("stripe_customer_id").notNull().default(""),
+    stripeSubscriptionId: text("stripe_subscription_id").notNull().default(""),
+    status: text("status").notNull().default("active"),
+    currentPeriodEnd: text("current_period_end").notNull().default(""),
+    cancelAtPeriodEnd: integer("cancel_at_period_end").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull().default(""),
+  },
+  (t) => ({
+    uniqStripeSub: uniqueIndex("user_subscriptions_stripe_sub_idx").on(
+      t.stripeSubscriptionId,
+    ),
+  }),
+);
+
+export type UserSubscription = typeof userSubscriptions.$inferSelect;

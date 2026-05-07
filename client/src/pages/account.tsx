@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Download, Star, Trash2, MessageSquareText, LogOut, Bookmark } from "lucide-react";
+import { Download, Star, Trash2, MessageSquareText, LogOut, Bookmark, Lock, Crown } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,25 @@ function SignedOutPrompt() {
   );
 }
 
+type Purchase = {
+  id: number;
+  uploadedPrayerId: number;
+  amountCents: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+};
+
+type PurchasesResponse = {
+  ok: boolean;
+  items: Purchase[];
+  subscription: {
+    status: string;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+  } | null;
+};
+
 export default function AccountPage() {
   const { serverUser, loading, signOut } = useAuth();
   const { toast } = useToast();
@@ -95,6 +114,40 @@ export default function AccountPage() {
     queryKey: ["/api/me/prayers"],
     enabled: !!serverUser,
   });
+
+  const { data: purchasesData } = useQuery<PurchasesResponse>({
+    queryKey: ["/api/me/purchases"],
+    enabled: !!serverUser,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const purchase = sp.get("purchase");
+    const subscription = sp.get("subscription");
+    if (purchase === "success" || subscription === "success") {
+      toast({
+        title: purchase === "success" ? "Prayer unlocked" : "Subscription active",
+        description:
+          purchase === "success"
+            ? "Thank you — your prayer is ready to listen."
+            : "Welcome — your subscription is active.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/prayers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/uploaded-prayers"] });
+      sp.delete("purchase");
+      sp.delete("subscription");
+      sp.delete("session_id");
+      sp.delete("prayer");
+      const next = sp.toString();
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${next ? `?${next}` : ""}${window.location.hash}`,
+      );
+    }
+  }, [toast]);
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, rating, feedback }: { id: number; rating?: number; feedback?: string }) => {
@@ -145,6 +198,29 @@ export default function AccountPage() {
   if (!serverUser) return <SignedOutPrompt />;
 
   const items = data?.items ?? [];
+  const subscription = purchasesData?.subscription ?? null;
+  const subscribed =
+    !!subscription && ["active", "trialing", "past_due"].includes(subscription.status);
+  const purchasedPrayerIds = new Set(
+    (purchasesData?.items ?? [])
+      .filter((p) => p.status === "paid")
+      .map((p) => p.uploadedPrayerId),
+  );
+
+  const hasAccessToItem = (item: UserPrayer): boolean => {
+    if (item.source !== "uploaded") return true;
+    if (subscribed) return true;
+    const idNum = Number(item.prayerKey);
+    return Number.isFinite(idNum) && purchasedPrayerIds.has(idNum);
+  };
+  const protectedAudioUrl = (item: UserPrayer): string | null => {
+    if (item.source !== "uploaded") return item.audioUrl || null;
+    return `/api/uploaded-prayers/${item.prayerKey}/stream`;
+  };
+  const protectedDownloadUrl = (item: UserPrayer): string | null => {
+    if (item.source !== "uploaded") return item.audioUrl || null;
+    return `/api/uploaded-prayers/${item.prayerKey}/download`;
+  };
 
   return (
     <PageShell>
@@ -168,6 +244,42 @@ export default function AccountPage() {
             <LogOut className="h-4 w-4 mr-1.5" /> Sign out
           </Button>
         </div>
+
+        <section className="mb-8" data-testid="section-account-access">
+          <div
+            className="rounded-xl border border-card-border bg-card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+            data-testid="card-account-subscription"
+          >
+            <div className="flex items-start gap-3">
+              <Crown className="h-5 w-5 text-brand-gold shrink-0 mt-0.5" />
+              <div>
+                <div className="font-serif text-lg font-semibold">
+                  {subscribed ? "Active monthly subscription" : "No active subscription"}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {subscribed
+                    ? subscription?.currentPeriodEnd
+                      ? `Renews ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}.`
+                      : "You have unlimited access to all uploaded prayers."
+                    : "Subscribe for unlimited access, or buy individual prayers for $7."}
+                </div>
+                <div
+                  className="text-xs text-muted-foreground mt-1"
+                  data-testid="text-purchase-count"
+                >
+                  Prayers purchased: {purchasedPrayerIds.size}
+                </div>
+              </div>
+            </div>
+            <Link
+              href="/library"
+              className="text-sm font-semibold text-brand-gold hover:underline self-start md:self-center"
+              data-testid="link-account-browse"
+            >
+              Browse library →
+            </Link>
+          </div>
+        </section>
 
         <section>
           <div className="flex items-baseline justify-between mb-4">
@@ -228,15 +340,33 @@ export default function AccountPage() {
                       </button>
                     </div>
 
-                    {item.audioUrl ? (
-                      <audio
-                        controls
-                        preload="none"
-                        src={item.audioUrl}
-                        className="w-full h-9"
-                        data-testid={`audio-account-prayer-${item.id}`}
-                      />
-                    ) : null}
+                    {(() => {
+                      const access = hasAccessToItem(item);
+                      const audioUrl = protectedAudioUrl(item);
+                      if (access && audioUrl) {
+                        return (
+                          <audio
+                            controls
+                            preload="none"
+                            src={audioUrl}
+                            className="w-full h-9"
+                            data-testid={`audio-account-prayer-${item.id}`}
+                          />
+                        );
+                      }
+                      if (item.source === "uploaded") {
+                        return (
+                          <div
+                            className="rounded-md border border-dashed border-card-border bg-background/40 px-3 py-3 text-xs text-muted-foreground flex items-center gap-2"
+                            data-testid={`audio-locked-account-${item.id}`}
+                          >
+                            <Lock className="h-4 w-4 text-brand-gold shrink-0" />
+                            Unlock for $7 from the library, or subscribe for unlimited listening.
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-muted-foreground">
                       <div>
@@ -260,17 +390,21 @@ export default function AccountPage() {
                           testId={`rating-${item.id}`}
                         />
                       </div>
-                      {item.audioUrl ? (
-                        <a
-                          href={item.audioUrl}
-                          download
-                          onClick={() => recordDownload.mutate(item.id)}
-                          className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
-                          data-testid={`link-account-download-${item.id}`}
-                        >
-                          <Download className="h-4 w-4" /> Download MP3
-                        </a>
-                      ) : null}
+                      {(() => {
+                        const access = hasAccessToItem(item);
+                        const url = protectedDownloadUrl(item);
+                        if (!access || !url) return null;
+                        return (
+                          <a
+                            href={url}
+                            onClick={() => recordDownload.mutate(item.id)}
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
+                            data-testid={`link-account-download-${item.id}`}
+                          >
+                            <Download className="h-4 w-4" /> Download MP3
+                          </a>
+                        );
+                      })()}
                     </div>
 
                     <div>

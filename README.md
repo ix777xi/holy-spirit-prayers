@@ -131,11 +131,16 @@ Admin: `/#/admin`, `/#/admin/prayers`, `/#/admin/categories`,
 | GET    | `/api/prayers`                                 | Catalog (currently seed)                      |
 | GET    | `/api/categories`                              | Categories (currently seed)                   |
 | GET    | `/api/admin/dashboard`                         | Submission counts                             |
-| GET    | `/api/uploaded-prayers`                        | List admin-uploaded MP3 prayers               |
+| GET    | `/api/uploaded-prayers`                        | List admin-uploaded MP3 prayers (audio URLs gated per user) |
 | POST   | `/api/uploaded-prayers`                        | Admin MP3 upload (multipart/form-data)        |
 | DELETE | `/api/uploaded-prayers/:id`                    | Delete an uploaded prayer                     |
+| GET    | `/api/uploaded-prayers/:id/access`             | Per-user access status (auth/subscription/purchase) |
+| GET    | `/api/uploaded-prayers/:id/stream`             | **Protected** audio stream (auth + entitlement required) |
+| GET    | `/api/uploaded-prayers/:id/download`           | **Protected** MP3 download (auth + entitlement required) |
+| POST   | `/api/uploaded-prayers/:id/create-checkout-session` | Start a $7 Stripe Checkout for this prayer |
+| GET    | `/api/me/purchases`                            | List the signed-in user's prayer purchases + subscription |
 | POST   | `/api/create-subscription-checkout-session`    | Start a $27/month Stripe Checkout subscription|
-| POST   | `/api/stripe/webhook`                          | Stripe webhook stub                           |
+| POST   | `/api/stripe/webhook`                          | Stripe webhook (signature-verified)           |
 | POST   | `/api/auth/register`                           | Create an account (email + password) and start a session |
 | POST   | `/api/auth/login`                              | Log in with email + password — sets `hsp_sid` httpOnly cookie |
 | GET    | `/api/auth/me`                                 | Current logged-in user (or `null`)            |
@@ -189,7 +194,10 @@ Logging out clears the cookie and invalidates the in-memory admin session.
 
 The homepage exposes a "Subscribe Monthly · $27/month" CTA that posts to
 `/api/create-subscription-checkout-session`. The server creates a Stripe Checkout
-session in `subscription` mode and returns the redirect URL.
+session in `subscription` mode and returns the redirect URL. When a logged-in
+user starts the flow we attach `client_reference_id`, `metadata.userId`, and
+`subscription_data.metadata.userId` so the webhook can mark the right account
+as subscribed.
 
 To enable it, set the following in your environment (Railway → Variables, or a
 local `.env` based on `.env.example`):
@@ -198,10 +206,59 @@ local `.env` based on `.env.example`):
 | ------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
 | `STRIPE_SECRET_KEY`       | Yes      | Stripe server key (`sk_live_...` or `sk_test_...`)                                               |
 | `STRIPE_MONTHLY_PRICE_ID` | Optional | Price ID for the $27/month plan. If unset, the server uses inline `price_data` (USD 2700/month). |
+| `STRIPE_PRAYER_PRICE_ID`  | Optional | Price ID for the $7 per-prayer purchase. If unset, the server uses inline `price_data` (USD 700).|
+| `STRIPE_WEBHOOK_SECRET`   | Yes (prod) | Webhook signing secret. Required in production — the webhook handler fails closed without it. |
 | `BASE_URL`                | Optional | Public origin used in `success_url` / `cancel_url`. Falls back to the request Origin/Host.       |
 
 Never commit real secret keys — only `STRIPE_SECRET_KEY` is read from
 `process.env`. The endpoint returns `503` with a clear error if it isn't set.
+
+### Paid access to uploaded prayers
+
+Admin-uploaded MP3 prayers are **never** served from a public path. The audio
+file lives on disk in `uploads/` but is only reachable through the protected
+endpoints above (`/api/uploaded-prayers/:id/stream` and `…/download`), which
+require:
+
+1. a valid logged-in user session (`hsp_sid` cookie), AND
+2. either an active monthly subscription, OR a recorded one-time purchase of
+   that specific prayer (`prayer_purchases` row with `status = 'paid'`).
+
+Admin sessions (`hsp_admin_sid`) also bypass the gate so the upload console
+can preview new uploads. Without entitlement the endpoints return `402
+Payment required` with `priceCents: 700`.
+
+`GET /api/uploaded-prayers` therefore exposes only metadata (title, category,
+description) plus `access`, `purchased`, `subscribed`, and `priceCents`
+flags. `audioUrl` and `downloadUrl` are returned only to viewers who already
+have access. The Library renders a **Buy for $7** button for everyone else,
+which posts to `/api/uploaded-prayers/:id/create-checkout-session` and
+forwards the user to Stripe Checkout.
+
+### Stripe webhook setup
+
+In the Stripe Dashboard, create a webhook endpoint pointing at
+`https://<your-host>/api/stripe/webhook` and subscribe it to **at minimum**:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+Copy the signing secret (`whsec_...`) into the `STRIPE_WEBHOOK_SECRET` env
+variable. The handler verifies the `Stripe-Signature` header against the raw
+request body (captured by `express.json`'s `verify` callback) using
+HMAC-SHA-256 with a 5-minute timestamp tolerance. In production a missing
+secret causes the route to respond `503` and reject the event; in development
+a missing secret logs a warning and accepts the event so the dashboard's
+**Send test event** button can drive the flow locally.
+
+On `checkout.session.completed` for `mode=payment` we look up
+`metadata.uploadedPrayerId` and `metadata.userId` (`client_reference_id` is
+honoured as a fallback) and insert/upsert a `prayer_purchases` row with
+`status = 'paid'`. For `mode=subscription` we upsert into
+`user_subscriptions`. `customer.subscription.{updated,deleted}` flow into the
+same table so cancellations revoke library access immediately.
 
 ---
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ChevronRight, Filter, X, Download, Music, BookmarkPlus } from "lucide-react";
+import { Search, ChevronRight, Filter, X, Download, Music, BookmarkPlus, Lock } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
 import { PrayerCard } from "@/components/brand/PrayerCard";
 import { SectionDivider } from "@/components/brand/SectionDivider";
@@ -16,12 +16,17 @@ type UploadedPrayerItem = {
   title: string;
   categorySlug: string;
   description: string;
-  audioUrl: string;
+  audioUrl: string | null;
+  downloadUrl: string | null;
   audioOriginalName: string;
   audioMimeType: string;
   audioSize: number;
   durationSeconds: number;
   createdAt: string;
+  access: boolean;
+  purchased: boolean;
+  subscribed: boolean;
+  priceCents: number;
 };
 
 type PriceFilter = "all" | "free" | "paid";
@@ -49,10 +54,40 @@ export default function LibraryPage() {
   const [sort, setSort] = useState<Sort>("popular");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const { data: uploadedData } = useQuery<{ ok: boolean; items: UploadedPrayerItem[] }>({
+  const { data: uploadedData } = useQuery<{
+    ok: boolean;
+    items: UploadedPrayerItem[];
+    subscribed: boolean;
+    authenticated: boolean;
+  }>({
     queryKey: ["/api/uploaded-prayers"],
   });
   const uploaded = uploadedData?.items ?? [];
+
+  const { toast: libraryToast } = useToast();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const purchase = sp.get("purchase");
+    if (purchase === "success") {
+      libraryToast({
+        title: "Purchase complete",
+        description: "Your prayer is unlocked.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/uploaded-prayers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/purchases"] });
+      sp.delete("purchase");
+      sp.delete("session_id");
+      sp.delete("prayer");
+      const next = sp.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${next ? `?${next}` : ""}${window.location.hash}`);
+    } else if (purchase === "cancelled") {
+      libraryToast({
+        title: "Checkout cancelled",
+        description: "No charge was made.",
+      });
+    }
+  }, [libraryToast]);
 
   const filteredUploaded = useMemo(() => {
     let items = uploaded.slice();
@@ -262,6 +297,7 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [saving, setSaving] = useState(false);
+  const [buying, setBuying] = useState(false);
 
   async function saveToAccount() {
     if (!serverUser) {
@@ -276,7 +312,7 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
         title: item.title,
         categorySlug: item.categorySlug,
         description: item.description,
-        audioUrl: item.audioUrl,
+        audioUrl: item.audioUrl ?? "",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/me/prayers"] });
       toast({ title: "Saved", description: "Added to your account." });
@@ -286,6 +322,36 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
       setSaving(false);
     }
   }
+
+  async function buyPrayer() {
+    if (!serverUser) {
+      navigate("/login");
+      return;
+    }
+    setBuying(true);
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/uploaded-prayers/${item.id}/create-checkout-session`,
+        {},
+      );
+      const data = await res.json();
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error(data?.error || "Could not start checkout.");
+    } catch (err: any) {
+      toast({
+        title: "Checkout unavailable",
+        description: err?.message || "Try again later.",
+        variant: "destructive",
+      });
+      setBuying(false);
+    }
+  }
+
+  const priceLabel = `$${(item.priceCents / 100).toFixed(0)}`;
 
   return (
     <article
@@ -312,14 +378,30 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
       {item.description ? (
         <p className="text-sm text-muted-foreground line-clamp-3">{item.description}</p>
       ) : null}
-      <audio
-        controls
-        preload="none"
-        src={item.audioUrl}
-        className="w-full h-9"
-        data-testid={`audio-library-uploaded-${item.id}`}
-      />
-      <div className="flex items-center justify-between pt-1 gap-2">
+
+      {item.access && item.audioUrl ? (
+        <audio
+          controls
+          preload="none"
+          src={item.audioUrl}
+          className="w-full h-9"
+          data-testid={`audio-library-uploaded-${item.id}`}
+        />
+      ) : (
+        <div
+          className="rounded-md border border-dashed border-card-border bg-background/40 px-3 py-3 text-xs text-muted-foreground flex items-center gap-2"
+          data-testid={`audio-locked-uploaded-${item.id}`}
+        >
+          <Lock className="h-4 w-4 text-brand-gold shrink-0" />
+          {!serverUser
+            ? "Sign in and unlock to listen."
+            : item.subscribed
+              ? "Loading your subscription…"
+              : `Unlock this prayer for ${priceLabel}, or subscribe for unlimited listening.`}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
         <button
           type="button"
           onClick={saveToAccount}
@@ -329,14 +411,34 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
         >
           <BookmarkPlus className="h-4 w-4" /> {serverUser ? "Save to account" : "Sign in to save"}
         </button>
-        <a
-          href={item.audioUrl}
-          download={item.audioOriginalName || `${item.title}.mp3`}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
-          data-testid={`link-download-uploaded-${item.id}`}
-        >
-          <Download className="h-4 w-4" /> Download MP3
-        </a>
+
+        {item.access && item.downloadUrl ? (
+          <a
+            href={item.downloadUrl}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-brand-gold"
+            data-testid={`link-download-uploaded-${item.id}`}
+          >
+            <Download className="h-4 w-4" /> Download MP3
+          </a>
+        ) : !serverUser ? (
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-gold hover:underline"
+            data-testid={`link-login-uploaded-${item.id}`}
+          >
+            <Lock className="h-4 w-4" /> Log in to listen
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={buyPrayer}
+            disabled={buying}
+            className="inline-flex items-center gap-1.5 rounded-md bg-brand-gold px-3 py-1.5 text-sm font-semibold text-brand-navy hover:bg-brand-goldsoft disabled:opacity-60"
+            data-testid={`button-buy-uploaded-${item.id}`}
+          >
+            {buying ? "Starting…" : `Buy for ${priceLabel}`}
+          </button>
+        )}
       </div>
     </article>
   );
