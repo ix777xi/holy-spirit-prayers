@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Search, ChevronRight, Filter, X } from "lucide-react";
 import { PageShell } from "@/components/brand/PageShell";
@@ -13,7 +13,20 @@ type Sort = "newest" | "popular" | "az";
 
 export default function LibraryPage() {
   const [q, setQ] = useState("");
-  const [category, setCategory] = useState<string>("all");
+  const [category, setCategory] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    const slug = new URLSearchParams(window.location.search).get("category");
+    return slug && categories.some((c) => c.slug === slug) ? slug : "all";
+  });
+
+  useEffect(() => {
+    const onPop = () => {
+      const slug = new URLSearchParams(window.location.search).get("category");
+      setCategory(slug && categories.some((c) => c.slug === slug) ? slug : "all");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const [price, setPrice] = useState<PriceFilter>("all");
   const [duration, setDuration] = useState<DurationFilter>("all");
   const [sort, setSort] = useState<Sort>("popular");

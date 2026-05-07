@@ -4,41 +4,92 @@ import { PageShell } from "@/components/brand/PageShell";
 import { Scripture } from "@/components/brand/Scripture";
 import { SectionDivider } from "@/components/brand/SectionDivider";
 import { PrayerCard } from "@/components/brand/PrayerCard";
-import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
-import { prayers } from "@/lib/data";
+import { categories, prayers } from "@/lib/data";
+
+const HERO_CATEGORY_SLUGS = [
+  "protection",
+  "healing",
+  "deliverance",
+  "anxiety-peace",
+  "forgiveness",
+  "repentance",
+  "marriage",
+  "family",
+  "children",
+  "employment-provision",
+  "wisdom-direction",
+  "spiritual-warfare",
+  "morning",
+  "night",
+  "against-fear",
+  "purpose-calling",
+];
+
+const SHORT_NAME: Record<string, string> = {
+  "anxiety-peace": "Anxiety & Peace",
+  "employment-provision": "Employment & Provision",
+  "wisdom-direction": "Wisdom & Direction",
+  "spiritual-warfare": "Spiritual Warfare",
+  "against-fear": "Against Fear",
+  "purpose-calling": "Purpose & Calling",
+  "freedom-addiction": "Freedom from Addiction",
+  "identity-in-christ": "Identity in Christ",
+  "grief-loss": "Grief & Loss",
+  "court-of-heaven": "Court of Heaven",
+  "relationship-restoration": "Relationship Restoration",
+  "breaking-soul-ties": "Breaking Soul Ties",
+};
+
+function shortName(slug: string, fallback: string) {
+  if (SHORT_NAME[slug]) return SHORT_NAME[slug];
+  return fallback.replace(/\s*Prayers?$/i, "").replace(/^Prayers?\s+for\s+/i, "");
+}
 
 export default function HomePage() {
   const featured = prayers.filter((p) => p.isFeatured).slice(0, 6);
+  const heroCategories = HERO_CATEGORY_SLUGS
+    .map((slug) => categories.find((c) => c.slug === slug))
+    .filter((c): c is (typeof categories)[number] => Boolean(c));
   return (
     <PageShell>
       {/* HERO */}
       <section className="surface-cathedral border-b border-border/60">
-        <div className="mx-auto max-w-5xl px-6 py-16 md:py-24 text-center space-y-8">
-          <div className="flex justify-center">
-            <Logo size="lg" orientation="stacked" />
-          </div>
-          <Scripture reference="Romans 8:26" align="center" size="lg">
+        <div className="mx-auto max-w-5xl px-6 py-6 md:py-8 text-center space-y-3">
+          <Scripture reference="Romans 8:26" align="center" size="md">
             Likewise the Spirit also helps in our weaknesses. For we do not know what we should pray for as we ought,
             but the Spirit Himself makes intercession for us…
           </Scripture>
-          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-            Bible-rooted prayers for every season of life. Listen, download, or request your own —
-            so that when words fail, prayer doesn’t.
+          <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
+            Bible-rooted prayers for every season — listen, download, or request your own.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+            {heroCategories.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/library?category=${c.slug}`}
+                data-testid={`hero-chip-${c.slug}`}
+                className="text-xs md:text-sm font-medium px-2.5 py-1 rounded-full border border-foreground/30 text-foreground hover:bg-foreground hover:text-background transition-colors"
+              >
+                {shortName(c.slug, c.name)}
+              </Link>
+            ))}
+            <Link
+              href="/library"
+              data-testid="hero-chip-all"
+              className="text-xs md:text-sm font-medium px-2.5 py-1 rounded-full border border-foreground bg-foreground text-background hover:bg-foreground/90"
+            >
+              All categories →
+            </Link>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
             <Link href="/free-prayer">
-              <Button size="lg" className="bg-brand-gold hover:bg-brand-goldsoft text-white font-semibold" data-testid="button-cta-free">
+              <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90 font-semibold" data-testid="button-cta-free">
                 Listen to a Free Prayer
               </Button>
             </Link>
-            <Link href="/library">
-              <Button size="lg" variant="outline" className="border-brand-navy text-brand-navy dark:text-foreground dark:border-foreground/30" data-testid="button-cta-library">
-                Browse Prayer Library
-              </Button>
-            </Link>
             <Link href="/custom-prayer">
-              <Button size="lg" className="bg-brand-blue hover:bg-brand-blue/90 text-white font-semibold" data-testid="button-cta-custom">
+              <Button size="sm" variant="outline" className="border-foreground text-foreground hover:bg-foreground hover:text-background font-semibold" data-testid="button-cta-custom">
                 Request Custom Prayer
               </Button>
             </Link>
