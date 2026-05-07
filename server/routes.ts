@@ -9,6 +9,11 @@ import { storage, db } from "./storage";
 import { uploadedPrayers } from "@shared/schema";
 import { desc, eq } from "drizzle-orm";
 import { attachSessionMiddleware, registerAuthRoutes, requireAuth } from "./auth";
+import {
+  attachAdminSessionMiddleware,
+  registerAdminAuthRoutes,
+  requireAdmin,
+} from "./admin-auth";
 
 /* ----- Validation schemas ----- */
 
@@ -164,6 +169,8 @@ export async function registerRoutes(
 
   attachSessionMiddleware(app);
   registerAuthRoutes(app);
+  attachAdminSessionMiddleware(app);
+  registerAdminAuthRoutes(app);
 
   // Health
   app.get("/api/health", (_req, res) => {
@@ -272,7 +279,7 @@ export async function registerRoutes(
   });
 
   // Create uploaded prayer (multipart form-data: title, categorySlug, description, audio)
-  app.post("/api/uploaded-prayers", async (req: Request, res: Response) => {
+  app.post("/api/uploaded-prayers", requireAdmin, async (req: Request, res: Response) => {
     try {
       const ct = String(req.headers["content-type"] || "");
       const m = /boundary=([^;]+)/i.exec(ct);
@@ -353,7 +360,7 @@ export async function registerRoutes(
   });
 
   // Delete an uploaded prayer (admin convenience)
-  app.delete("/api/uploaded-prayers/:id", async (req, res) => {
+  app.delete("/api/uploaded-prayers/:id", requireAdmin, async (req, res) => {
     try {
       const id = Number(req.params.id);
       if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid id" });

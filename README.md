@@ -140,6 +140,9 @@ Admin: `/#/admin`, `/#/admin/prayers`, `/#/admin/categories`,
 | POST   | `/api/auth/login`                              | Log in with email + password — sets `hsp_sid` httpOnly cookie |
 | GET    | `/api/auth/me`                                 | Current logged-in user (or `null`)            |
 | POST   | `/api/auth/logout`                             | Clear session cookie                          |
+| POST   | `/api/admin/auth/login`                        | Admin sign-in (username + password) — sets `hsp_admin_sid` httpOnly cookie |
+| GET    | `/api/admin/auth/me`                           | Current admin (or `null`)                     |
+| POST   | `/api/admin/auth/logout`                       | Clear admin session cookie                    |
 | GET    | `/api/me/prayers`                              | List the signed-in user's saved prayers       |
 | POST   | `/api/me/prayers`                              | Save (or upsert) a prayer to the account      |
 | PATCH  | `/api/me/prayers/:id`                          | Update rating / feedback                      |
@@ -164,6 +167,23 @@ request arrives over HTTPS (e.g. behind Railway's TLS).
 
 > Demo tip: register with an email starting with `admin` (e.g.
 > `admin@local.dev`) to get the admin role and reach `/#/admin` after sign-in.
+
+### Admin upload access
+
+The MP3 upload console at **`/#/admin/uploads`** is gated by a separate
+username/password sign-in that is independent from the regular email-account
+system. It guards both the upload UI and the underlying `POST` and `DELETE`
+endpoints on `/api/uploaded-prayers`.
+
+| Variable         | Required | Purpose                                                                                                           |
+| ---------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_USERNAME` | No       | Admin console username. Defaults to `Caleb` (set in `server/admin-auth.ts`) when the env var is not provided.    |
+| `ADMIN_PASSWORD` | No       | Admin console password. Defaults to `HeartNoah` for the prototype — override via env var in production.          |
+
+Verification happens server-side; the password is **not** shipped in any
+frontend bundle. On successful login the server sets an httpOnly admin cookie
+(`hsp_admin_sid`, `SameSite=Lax`, `Secure` on HTTPS) with a 12-hour TTL.
+Logging out clears the cookie and invalidates the in-memory admin session.
 
 ### Stripe subscription setup
 

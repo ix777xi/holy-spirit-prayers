@@ -1,4 +1,4 @@
-import { useState, useMemo, ReactNode, useRef } from "react";
+import { useState, useMemo, ReactNode, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -22,6 +22,9 @@ import {
   UploadCloud,
   Trash2,
   Music,
+  ShieldCheck,
+  LogOut,
+  Loader2,
 } from "lucide-react";
 import {
   LineChart,
@@ -1170,6 +1173,173 @@ export function AdminSettings() {
   );
 }
 
+/* ---------- Admin auth (separate from regular user auth) ---------- */
+
+type AdminIdentity = { username: string } | null;
+
+function useAdminAuth() {
+  const [admin, setAdmin] = useState<AdminIdentity>(null);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/auth/me", { credentials: "include" });
+      if (!res.ok) {
+        setAdmin(null);
+        return;
+      }
+      const json = (await res.json()) as { ok: boolean; admin: AdminIdentity };
+      setAdmin(json.admin ?? null);
+    } catch {
+      setAdmin(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
+
+  const login = useCallback(async (username: string, password: string) => {
+    const res = await fetch("/api/admin/auth/login", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.ok) {
+      throw new Error(json?.error || "Login failed");
+    }
+    setAdmin(json.admin ?? null);
+  }, []);
+
+  const logout = useCallback(async () => {
+    await fetch("/api/admin/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
+    setAdmin(null);
+  }, []);
+
+  return { admin, loading, login, logout, refresh };
+}
+
+function AdminLoginGate({
+  loading,
+  onLogin,
+}: {
+  loading: boolean;
+  onLogin: (username: string, password: string) => Promise<void>;
+}) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await onLogin(username, password);
+    } catch (err: any) {
+      setError(err?.message || "Login failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-brand-cream/30 dark:bg-brand-navy/40"
+        data-testid="admin-login-loading"
+      >
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Checking admin session…
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center bg-brand-cream/30 dark:bg-brand-navy/40 px-4 py-10"
+      data-testid="admin-login-page"
+    >
+      <Card className="w-full max-w-md" data-testid="admin-login-card">
+        <CardHeader>
+          <div className="flex items-center gap-2 text-brand-gold">
+            <ShieldCheck className="h-5 w-5" />
+            <span className="text-xs uppercase tracking-widest font-semibold">
+              Admin Console
+            </span>
+          </div>
+          <CardTitle className="font-serif text-xl mt-2">
+            Sign in to upload prayers
+          </CardTitle>
+          <CardDescription>
+            This area is restricted. Use the admin credentials provided by the
+            site owner.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={submit} className="space-y-4" data-testid="admin-login-form">
+            <div>
+              <Label htmlFor="admin-username">Username</Label>
+              <Input
+                id="admin-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                required
+                data-testid="input-admin-username"
+              />
+            </div>
+            <div>
+              <Label htmlFor="admin-password">Password</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                data-testid="input-admin-password"
+              />
+            </div>
+            {error && (
+              <div
+                className="text-sm text-red-600 dark:text-red-400"
+                data-testid="text-admin-login-error"
+                role="alert"
+              >
+                {error}
+              </div>
+            )}
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-brand-gold hover:bg-brand-gold/90 text-brand-navy"
+              data-testid="button-admin-login"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                "Sign in"
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 /* ---------- Uploads (MP3 prayers) ---------- */
 
 type UploadedPrayerItem = {
@@ -1198,6 +1368,22 @@ function formatBytes(n: number) {
 }
 
 export function AdminUploads() {
+  const { admin, loading, login, logout } = useAdminAuth();
+
+  if (!admin) {
+    return <AdminLoginGate loading={loading} onLogin={login} />;
+  }
+
+  return <AdminUploadsAuthenticated adminUsername={admin.username} onLogout={logout} />;
+}
+
+function AdminUploadsAuthenticated({
+  adminUsername,
+  onLogout,
+}: {
+  adminUsername: string;
+  onLogout: () => Promise<void>;
+}) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -1206,6 +1392,7 @@ export function AdminUploads() {
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const { data, isLoading } = useQuery<{ ok: boolean; items: UploadedPrayerItem[] }>({
     queryKey: ["/api/uploaded-prayers"],
@@ -1264,10 +1451,42 @@ export function AdminUploads() {
     }
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await onLogout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <AdminShell
       title="Upload MP3 Prayers"
       subtitle="Add an audio prayer with category, title, and description. It will appear in the public Prayer Library."
+      actions={
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="secondary"
+            className="bg-brand-gold/15 text-brand-gold border-brand-gold/30"
+            data-testid="text-admin-username"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+            {adminUsername}
+          </Badge>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            data-testid="button-admin-logout"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            {loggingOut ? "Signing out…" : "Sign out"}
+          </Button>
+        </div>
+      }
     >
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <Card className="lg:col-span-2" data-testid="card-upload-form">
