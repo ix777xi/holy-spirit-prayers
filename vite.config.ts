@@ -12,7 +12,11 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
-  base: "/",
+  // Keep relative asset URLs so the built dist/public works when served from
+  // any mount path (e.g. static preview hosts that mount the bundle under a
+  // sub-path). Express rewrites these to absolute paths in injectMeta() when
+  // it serves SEO-aware deep routes like /prayer/123.
+  base: "./",
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

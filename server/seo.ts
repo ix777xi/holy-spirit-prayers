@@ -299,6 +299,20 @@ const TITLE_REGEX = /<title>[\s\S]*?<\/title>/i;
 const DESC_REGEX = /<meta\s+name="description"[^>]*\/?>(?:)/i;
 const OG_REGEX = /<meta\s+property="og:[^"]+"[^>]*\/?>(?:)/gi;
 
+// Rewrite Vite's relative asset references (./assets/...) to absolute /assets/
+// paths so deep routes like /prayer/123 don't try to load /prayer/assets/...
+// We keep the build output relative (vite base "./") so the bundle still works
+// when a static host mounts dist/public under a sub-path; on Express we always
+// serve from root and need absolute references.
+const RELATIVE_ASSET_ATTR_REGEX =
+  /(\b(?:src|href)\s*=\s*["'])\.\/(assets\/[^"']+)(["'])/gi;
+
+function absolutizeAssetUrls(html: string): string {
+  return html.replace(RELATIVE_ASSET_ATTR_REGEX, (_m, pre, ref, post) => {
+    return `${pre}/${ref}${post}`;
+  });
+}
+
 export function injectMeta(html: string, pathname: string): string {
   const siteUrl = getSiteUrl();
   const meta = defaultMetaForPath(pathname, siteUrl);
@@ -309,6 +323,8 @@ export function injectMeta(html: string, pathname: string): string {
     .replace(TITLE_REGEX, "")
     .replace(DESC_REGEX, "")
     .replace(OG_REGEX, "");
+
+  cleaned = absolutizeAssetUrls(cleaned);
 
   // Inject our SEO block right after <head>
   if (HEAD_PLACEHOLDER_REGEX.test(cleaned)) {
