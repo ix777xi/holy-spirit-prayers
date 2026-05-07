@@ -29,6 +29,7 @@ type UploadedPrayerItem = {
   audioMimeType: string;
   audioSize: number;
   createdAt: string;
+  isFree: boolean;
   access: boolean;
   purchased: boolean;
   subscribed: boolean;
@@ -165,6 +166,14 @@ export default function PrayerDetailPage() {
               <span className="text-muted-foreground">
                 Uploaded {new Date(prayer.createdAt).toLocaleDateString()}
               </span>
+              {prayer.isFree ? (
+                <span
+                  className="rounded-full bg-emerald-600 text-white text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
+                  data-testid="badge-detail-free"
+                >
+                  Free
+                </span>
+              ) : null}
             </div>
             <h1 className="headline text-3xl md:text-5xl" data-testid="text-prayer-title">{prayer.title}</h1>
             {prayer.bibleTheme ? (
@@ -186,7 +195,9 @@ export default function PrayerDetailPage() {
                 <div className="rounded-md border border-dashed border-card-border bg-background/40 px-3 py-3 text-sm text-muted-foreground flex items-center gap-2" data-testid="audio-locked-detail">
                   <Lock className="h-4 w-4 text-brand-gold shrink-0" />
                   {!serverUser
-                    ? "Sign in and unlock this prayer to listen."
+                    ? prayer.isFree
+                      ? "This is a free prayer — sign in to listen and download."
+                      : "Sign in and unlock this prayer to listen."
                     : `Unlock this prayer for ${priceLabel}, or subscribe for unlimited listening.`}
                 </div>
               )}
@@ -208,7 +219,16 @@ export default function PrayerDetailPage() {
                   >
                     <Download className="h-4 w-4" /> Download MP3
                   </a>
-                ) : (
+                ) : prayer.isFree && !serverUser ? (
+                  <Link href="/login">
+                    <Button
+                      className="bg-brand-gold hover:bg-brand-goldsoft text-brand-navy font-semibold"
+                      data-testid="button-detail-login-free"
+                    >
+                      <Lock className="h-4 w-4 mr-1.5" /> Log in for free access
+                    </Button>
+                  </Link>
+                ) : prayer.isFree ? null : (
                   <Button
                     onClick={buyPrayer}
                     disabled={buying}
@@ -219,9 +239,11 @@ export default function PrayerDetailPage() {
                   </Button>
                 )}
               </div>
-              <p className="text-[11px] tracking-wide text-muted-foreground" data-testid="text-detail-promo-hint">
-                Have a promo code? Enter it at checkout.
-              </p>
+              {!prayer.isFree ? (
+                <p className="text-[11px] tracking-wide text-muted-foreground" data-testid="text-detail-promo-hint">
+                  Have a promo code? Enter it at checkout.
+                </p>
+              ) : null}
             </div>
           </div>
 

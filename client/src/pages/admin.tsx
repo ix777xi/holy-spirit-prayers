@@ -623,6 +623,7 @@ type UploadedPrayerItem = {
   audioMimeType: string;
   audioSize: number;
   durationSeconds: number;
+  isFree?: boolean;
   createdAt: string;
 };
 
@@ -672,6 +673,7 @@ function AdminUploadsAuthenticated({
   const [whatsIncluded, setWhatsIncluded] = useState("");
   const [scriptureQuote, setScriptureQuote] = useState("");
   const [scriptureReference, setScriptureReference] = useState("");
+  const [isFree, setIsFree] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -712,6 +714,7 @@ function AdminUploadsAuthenticated({
     setWhatsIncluded("");
     setScriptureQuote("");
     setScriptureReference("");
+    setIsFree(false);
     setFile(null);
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -739,6 +742,7 @@ function AdminUploadsAuthenticated({
       fd.append("scriptureQuote", scriptureQuote.trim());
       fd.append("scriptureReference", scriptureReference.trim());
       fd.append("categoryDescription", categoryDescription.trim());
+      fd.append("isFree", isFree ? "true" : "false");
       fd.append("audio", file);
       const res = await fetch("/api/uploaded-prayers", { method: "POST", body: fd });
       const json = await res.json();
@@ -924,6 +928,22 @@ function AdminUploadsAuthenticated({
                 />
               </div>
 
+              <div className="flex items-center justify-between border rounded-md p-3" data-testid="row-upload-is-free">
+                <div>
+                  <Label htmlFor="up-is-free">Free prayer</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Logged-in users can listen and download without paying. Logged-out
+                    visitors are still asked to sign in.
+                  </p>
+                </div>
+                <Switch
+                  id="up-is-free"
+                  checked={isFree}
+                  onCheckedChange={setIsFree}
+                  data-testid="switch-upload-is-free"
+                />
+              </div>
+
               <div>
                 <Label htmlFor="up-file">MP3 file</Label>
                 <input
@@ -995,9 +1015,20 @@ function AdminUploadsAuthenticated({
                               {it.title}
                             </div>
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {cat?.name || it.categorySlug} · {formatBytes(it.audioSize)}
-                            {it.durationSeconds ? ` · ${formatDuration(it.durationSeconds)}` : ""}
+                          <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5">
+                            <span>
+                              {cat?.name || it.categorySlug} · {formatBytes(it.audioSize)}
+                              {it.durationSeconds ? ` · ${formatDuration(it.durationSeconds)}` : ""}
+                            </span>
+                            {it.isFree ? (
+                              <Badge
+                                variant="secondary"
+                                className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                                data-testid={`badge-uploaded-free-${it.id}`}
+                              >
+                                Free
+                              </Badge>
+                            ) : null}
                           </div>
                           {it.bibleTheme ? (
                             <div className="mt-1 text-xs text-muted-foreground">

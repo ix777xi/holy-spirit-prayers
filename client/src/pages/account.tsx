@@ -120,6 +120,14 @@ export default function AccountPage() {
     enabled: !!serverUser,
   });
 
+  const { data: uploadedData } = useQuery<{
+    ok: boolean;
+    items: Array<{ id: number; isFree?: boolean }>;
+  }>({
+    queryKey: ["/api/uploaded-prayers"],
+    enabled: !!serverUser,
+  });
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const sp = new URLSearchParams(window.location.search);
@@ -207,11 +215,17 @@ export default function AccountPage() {
       .map((p) => p.uploadedPrayerId),
   );
 
+  const freePrayerIds = new Set<number>(
+    (uploadedData?.items ?? [])
+      .filter((p) => p.isFree)
+      .map((p) => p.id),
+  );
   const hasAccessToItem = (item: UserPrayer): boolean => {
     if (item.source !== "uploaded") return true;
     if (subscribed) return true;
     const idNum = Number(item.prayerKey);
-    return Number.isFinite(idNum) && purchasedPrayerIds.has(idNum);
+    if (!Number.isFinite(idNum)) return false;
+    return purchasedPrayerIds.has(idNum) || freePrayerIds.has(idNum);
   };
   const protectedAudioUrl = (item: UserPrayer): string | null => {
     if (item.source !== "uploaded") return item.audioUrl || null;
@@ -355,13 +369,17 @@ export default function AccountPage() {
                         );
                       }
                       if (item.source === "uploaded") {
+                        const idNum = Number(item.prayerKey);
+                        const isFreePrayer = Number.isFinite(idNum) && freePrayerIds.has(idNum);
                         return (
                           <div
                             className="rounded-md border border-dashed border-card-border bg-background/40 px-3 py-3 text-xs text-muted-foreground flex items-center gap-2"
                             data-testid={`audio-locked-account-${item.id}`}
                           >
                             <Lock className="h-4 w-4 text-brand-gold shrink-0" />
-                            Unlock for $7 from the library, or subscribe for unlimited listening.
+                            {isFreePrayer
+                              ? "Free prayer — refresh to load audio."
+                              : "Unlock for $7 from the library, or subscribe for unlimited listening."}
                           </div>
                         );
                       }

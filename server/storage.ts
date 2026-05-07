@@ -41,6 +41,7 @@ sqlite.exec(`
     audio_mime_type TEXT NOT NULL DEFAULT 'audio/mpeg',
     audio_size INTEGER NOT NULL DEFAULT 0,
     duration_seconds INTEGER NOT NULL DEFAULT 0,
+    is_free INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS user_prayers (
@@ -103,6 +104,7 @@ tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN whats_included TEXT NOT NU
 tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN scripture_quote TEXT NOT NULL DEFAULT '';`);
 tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN scripture_reference TEXT NOT NULL DEFAULT '';`);
 tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN category_description TEXT NOT NULL DEFAULT '';`);
+tryAddColumn(`ALTER TABLE uploaded_prayers ADD COLUMN is_free INTEGER NOT NULL DEFAULT 0;`);
 
 export const db = drizzle(sqlite);
 

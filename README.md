@@ -291,6 +291,10 @@ Manage / rotate the code from **Stripe Dashboard → Products → Coupons**.
   credentials (default `Caleb` / `HeartNoah`, override via `ADMIN_USERNAME` /
   `ADMIN_PASSWORD`). The Prayer Library and homepage render only what has
   been uploaded — there is no seed data shipped.
+- **Free prayers:** the upload form has a *Free prayer* toggle. When enabled,
+  any signed-in user can stream and download the prayer without paying or
+  subscribing. Logged-out visitors are still asked to sign in — uploaded MP3s
+  are never exposed by raw URL.
 - **Promotion code 777:** active in Stripe (100% off the monthly
   subscription). Customers enter it at the Stripe Checkout page during
   subscription or one-time purchase.

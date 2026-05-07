@@ -29,6 +29,7 @@ type UploadedPrayerItem = {
   audioSize: number;
   durationSeconds: number;
   createdAt: string;
+  isFree: boolean;
   access: boolean;
   purchased: boolean;
   subscribed: boolean;
@@ -306,9 +307,18 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
             </h3>
           </Link>
         </div>
-        <span className="shrink-0 rounded-full bg-foreground text-background text-[10px] font-medium px-2 py-0.5">
-          New
-        </span>
+        {item.isFree ? (
+          <span
+            className="shrink-0 rounded-full bg-emerald-600 text-white text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
+            data-testid={`badge-library-free-${item.id}`}
+          >
+            Free
+          </span>
+        ) : (
+          <span className="shrink-0 rounded-full bg-foreground text-background text-[10px] font-medium px-2 py-0.5">
+            New
+          </span>
+        )}
       </div>
       {item.bibleTheme ? (
         <p className="text-sm text-muted-foreground line-clamp-2 italic" data-testid={`text-uploaded-card-theme-${item.id}`}>
@@ -333,7 +343,9 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
         >
           <Lock className="h-4 w-4 text-brand-gold shrink-0" />
           {!serverUser
-            ? "Sign in and unlock to listen."
+            ? item.isFree
+              ? "Free prayer — sign in to listen and download."
+              : "Sign in and unlock to listen."
             : item.subscribed
               ? "Loading your subscription…"
               : `Unlock this prayer for ${priceLabel}, or subscribe for unlimited listening.`}
@@ -365,9 +377,9 @@ function UploadedPrayerCard({ item }: { item: UploadedPrayerItem }) {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-gold hover:underline"
             data-testid={`link-login-uploaded-${item.id}`}
           >
-            <Lock className="h-4 w-4" /> Log in to listen
+            <Lock className="h-4 w-4" /> {item.isFree ? "Log in for free access" : "Log in to listen"}
           </Link>
-        ) : (
+        ) : item.isFree ? null : (
           <button
             type="button"
             onClick={buyPrayer}

@@ -281,7 +281,9 @@ export async function registerRoutes(
       }
       const items = rows.map((r) => {
         const purchased = purchasedSet.has(r.id);
-        const access = isAdmin || (!!userId && (subscribed || purchased));
+        const isFree = !!r.isFree;
+        const access =
+          isAdmin || (!!userId && (isFree || subscribed || purchased));
         return {
           id: r.id,
           title: r.title,
@@ -301,6 +303,7 @@ export async function registerRoutes(
           audioSize: r.audioSize,
           durationSeconds: r.durationSeconds,
           createdAt: r.createdAt,
+          isFree,
           access,
           purchased,
           subscribed,
@@ -319,6 +322,7 @@ export async function registerRoutes(
     if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
     const row = db.select().from(uploadedPrayers).where(eqId(id)).get();
     if (!row) return res.status(404).json({ ok: false, error: "Not found" });
+    const isFree = !!row.isFree;
     const userId = req.user?.id ?? null;
     if (!userId) {
       return res.json({
@@ -327,6 +331,7 @@ export async function registerRoutes(
         access: false,
         subscribed: false,
         purchased: false,
+        isFree,
         priceCents: 700,
       });
     }
@@ -335,9 +340,10 @@ export async function registerRoutes(
     res.json({
       ok: true,
       authenticated: true,
-      access: subscribed || purchased,
+      access: isFree || subscribed || purchased,
       subscribed,
       purchased,
+      isFree,
       priceCents: 700,
     });
   });
@@ -372,6 +378,10 @@ export async function registerRoutes(
           scriptureQuote: z.string().max(4000).optional().default(""),
           scriptureReference: z.string().max(200).optional().default(""),
           categoryDescription: z.string().max(2000).optional().default(""),
+          isFree: z
+            .union([z.literal("true"), z.literal("false"), z.literal("on"), z.literal("1"), z.literal("0"), z.literal("")])
+            .optional()
+            .default("false"),
         })
         .safeParse(fields);
 
@@ -394,6 +404,7 @@ export async function registerRoutes(
       const dest = path.join(UPLOAD_DIR, stored);
       fs.writeFileSync(dest, file.data);
 
+      const isFreeFlag = ["true", "on", "1"].includes(String(meta.data.isFree));
       const inserted = db
         .insert(uploadedPrayers)
         .values({
@@ -412,6 +423,7 @@ export async function registerRoutes(
           audioMimeType: file.contentType || "audio/mpeg",
           audioSize: file.data.length,
           durationSeconds: 0,
+          isFree: isFreeFlag ? 1 : 0,
           createdAt: new Date().toISOString(),
         })
         .returning()
@@ -437,6 +449,7 @@ export async function registerRoutes(
           audioMimeType: inserted.audioMimeType,
           audioSize: inserted.audioSize,
           durationSeconds: inserted.durationSeconds,
+          isFree: !!inserted.isFree,
           createdAt: inserted.createdAt,
         },
       });
@@ -475,9 +488,10 @@ export async function registerRoutes(
         return res.status(401).json({ ok: false, error: "Authentication required" });
       }
       const userId = req.user.id;
-      const subscribed = await storage.hasActiveSubscription(userId);
-      const purchased = await storage.hasPurchasedPrayer(userId, id);
-      if (!subscribed && !purchased) {
+      const isFree = !!row.isFree;
+      const subscribed = isFree ? false : await storage.hasActiveSubscription(userId);
+      const purchased = isFree ? false : await storage.hasPurchasedPrayer(userId, id);
+      if (!isFree && !subscribed && !purchased) {
         return res.status(402).json({
           ok: false,
           error: "Payment required",
@@ -527,9 +541,10 @@ export async function registerRoutes(
         return res.status(401).json({ ok: false, error: "Authentication required" });
       }
       const userId = req.user.id;
-      const subscribed = await storage.hasActiveSubscription(userId);
-      const purchased = await storage.hasPurchasedPrayer(userId, id);
-      if (!subscribed && !purchased) {
+      const isFree = !!row.isFree;
+      const subscribed = isFree ? false : await storage.hasActiveSubscription(userId);
+      const purchased = isFree ? false : await storage.hasPurchasedPrayer(userId, id);
+      if (!isFree && !subscribed && !purchased) {
         return res.status(402).json({
           ok: false,
           error: "Payment required",
