@@ -33,8 +33,8 @@ export function Navbar() {
                 key={l.href}
                 href={l.href}
                 data-testid={`link-${l.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={`px-3 py-2 rounded-md text-sm hover-elevate font-medium ${
-                  active ? "text-foreground bg-accent" : "text-foreground/80 hover:text-foreground"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  active ? "text-white bg-brand-gold" : "text-brand-navy dark:text-white hover:text-white hover:bg-brand-gold"
                 }`}
               >
                 {l.label}
@@ -72,7 +72,7 @@ export function Navbar() {
           )}
 
           <button
-            className="md:hidden hover-elevate rounded-md p-2 text-foreground/80"
+            className="md:hidden rounded-md p-2 text-brand-navy dark:text-white hover:bg-brand-gold hover:text-white transition-colors"
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
             aria-expanded={open}
@@ -91,7 +91,7 @@ export function Navbar() {
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-md text-sm hover-elevate font-medium"
+                className="px-3 py-2 rounded-md text-sm font-medium text-brand-navy dark:text-white hover:bg-brand-gold hover:text-white transition-colors"
                 data-testid={`link-mobile-${l.label.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 {l.label}
@@ -107,7 +107,7 @@ export function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-medium">Log in</Link>
+                <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm font-medium text-brand-navy dark:text-white hover:bg-brand-gold hover:text-white transition-colors">Log in</Link>
                 <Link href="/register" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm hover-elevate font-semibold bg-brand-gold text-white">Sign up</Link>
               </>
             )}
