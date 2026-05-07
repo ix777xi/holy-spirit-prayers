@@ -1,12 +1,17 @@
 import "dotenv/config";
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
+import compression from "compression";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+import { registerSeoStaticRoutes } from "./seo";
 import { createServer } from "node:http";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Compress text responses (HTML, JSON, JS, CSS) for faster loads / better LCP.
+app.use(compression());
 
 declare module "http" {
   interface IncomingMessage {
@@ -62,6 +67,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // SEO/meta routes (robots.txt, sitemap.xml, /health) must run before the
+  // SPA fallback so they return real text/XML rather than the React shell.
+  registerSeoStaticRoutes(app);
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

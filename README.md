@@ -58,6 +58,7 @@ Add the following in **Railway → Variables**. None of these are required for t
 | `STRIPE_PUBLISHABLE_KEY`  | Stripe public key (frontend, prefix `VITE_`)            | Future                 |
 | `STRIPE_MONTHLY_PRICE_ID` | Optional Price ID for the $27/month subscription        | Optional               |
 | `STRIPE_PRAYER_PRICE_ID`  | Optional Price ID for the $7 one-time prayer purchase   | Optional               |
+| `SITE_URL`                | Canonical origin for SEO (canonical, OG, sitemap, robots) — no trailing slash | Recommended            |
 | `SESSION_SECRET`          | Reserved for future signed-cookie/JWT session work      | Optional               |
 | `RESEND_API_KEY`          | Transactional email (or `SENDGRID_API_KEY`)             | Future                 |
 | `EMAIL_FROM`              | e.g. `prayers@holyspiritprayers.app`                    | Future                 |
@@ -120,6 +121,43 @@ Static: `/#/about`, `/#/contact`, `/#/legal`
 Admin: `/#/admin`, `/#/admin/prayers`, `/#/admin/categories`,
 `/#/admin/custom-requests`, `/#/admin/orders`, `/#/admin/users`,
 `/#/admin/analytics`, `/#/admin/settings`
+
+The SPA navigates via the hash fragment for all in-app links (this preserves
+the existing Stripe success/cancel redirects that target `/#/...`). For SEO,
+the Express server **also** responds to the corresponding real paths
+(`/`, `/library`, `/prayer/:id`, `/custom-prayer`, `/about`, `/contact`,
+`/legal`, etc.) and serves `index.html` with route-specific meta tags
+injected. When a real-path request hits the browser (e.g. a Google result
+or a direct sitemap link), `client/src/main.tsx` translates the pathname
+into the corresponding `#/...` hash and the SPA renders the right page.
+
+### SEO
+
+The server injects route-specific SEO before serving `index.html`:
+
+- `<title>`, `<meta name="description">`, canonical link, OG/Twitter tags.
+- `<meta name="robots">` — `index, follow` for public pages,
+  `noindex, nofollow` for `/login`, `/register`, `/forgot-password`,
+  `/reset-password`, `/account`, `/dashboard`, and `/admin/*`.
+- `application/ld+json` Organization + WebSite schema on the homepage.
+- `application/ld+json` Product + CreativeWork + BreadcrumbList schema on
+  prayer detail pages, generated from the live `uploaded_prayers` row
+  (price `$7.00 USD` unless `isFree` is set, in which case `$0.00`).
+
+The canonical origin comes from `SITE_URL` (default
+`https://holyspiritprayers.com`).
+
+Server-rendered SEO endpoints (real plain text / XML, not the React app):
+
+| Path           | Purpose                                                     |
+| -------------- | ----------------------------------------------------------- |
+| `/robots.txt`  | Allows public content, disallows admin/auth/account/api/    |
+| `/sitemap.xml` | Static pages + every uploaded prayer detail URL             |
+| `/health`      | Lightweight liveness check (alongside `/api/health`)        |
+
+`gzip` compression is enabled via `compression` middleware, and hashed Vite
+assets under `/assets/*` are served with `Cache-Control: public,
+max-age=31536000, immutable`. Google Fonts already load with `display=swap`.
 
 ### API endpoints
 

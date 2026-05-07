@@ -9,6 +9,7 @@ import { categories } from "@/lib/data";
 import { useAuth } from "@/lib/app-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 type UploadedPrayerItem = {
   id: number;
@@ -44,6 +45,12 @@ type UploadedPrayerItem = {
 type Sort = "newest" | "az";
 
 export default function LibraryPage() {
+  useDocumentMeta({
+    title: "Prayer Library — Holy Spirit Prayers",
+    description:
+      "Browse Spirit-led, Scripture-rooted prayer audio you can stream or download. Find prayers for healing, peace, faith, family, and more.",
+    canonicalPath: "/library",
+  });
   const [q, setQ] = useState("");
   const [category, setCategory] = useState<string>(() => {
     if (typeof window === "undefined") return "all";

@@ -5,6 +5,7 @@ import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/app-context";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode }) {
   return (
@@ -44,6 +45,12 @@ function FieldError({ message }: { message: string }) {
 }
 
 export function LoginPage() {
+  useDocumentMeta({
+    title: "Sign in — Holy Spirit Prayers",
+    description: "Sign in to your account.",
+    canonicalPath: "/login",
+    noindex: true,
+  });
   const { signIn } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -126,6 +133,12 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
+  useDocumentMeta({
+    title: "Create account — Holy Spirit Prayers",
+    description: "Create your Holy Spirit Prayers account.",
+    canonicalPath: "/register",
+    noindex: true,
+  });
   const { signUp } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();

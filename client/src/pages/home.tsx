@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { categories } from "@/lib/data";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 const HERO_CATEGORY_SLUGS = [
   "protection",
@@ -42,6 +43,12 @@ type UploadedPrayerItem = {
 };
 
 export default function HomePage() {
+  useDocumentMeta({
+    title: "Holy Spirit Prayers — Spirit-led prayers rooted in Scripture",
+    description:
+      "Stream Bible-centered prayers, download audio prayers, and request personalized custom prayers. Spirit-led, Scripture-rooted, non-denominational.",
+    canonicalPath: "/",
+  });
   const heroCategories = HERO_CATEGORY_SLUGS
     .map((slug) => categories.find((c) => c.slug === slug))
     .filter((c): c is (typeof categories)[number] => Boolean(c));

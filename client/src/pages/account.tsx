@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/app-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 type UserPrayer = {
   id: number;
@@ -106,6 +107,12 @@ type PurchasesResponse = {
 };
 
 export default function AccountPage() {
+  useDocumentMeta({
+    title: "Your Account — Holy Spirit Prayers",
+    description: "Your purchases, subscription, and saved prayers.",
+    canonicalPath: "/account",
+    noindex: true,
+  });
   const { serverUser, loading, signOut } = useAuth();
   const { toast } = useToast();
   const [editing, setEditing] = useState<Record<number, { rating: number; feedback: string }>>({});

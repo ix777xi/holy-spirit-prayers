@@ -6,6 +6,7 @@ import { PageShell } from "@/components/brand/PageShell";
 import { Scripture } from "@/components/brand/Scripture";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 import { categories } from "@/lib/data";
 import { useAuth } from "@/lib/app-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -71,6 +72,16 @@ export default function PrayerDetailPage() {
     () => (data?.items ?? []).filter((p) => p.id !== id).slice(0, 3),
     [data, id],
   );
+
+  useDocumentMeta({
+    title: prayer
+      ? `${prayer.title} — Holy Spirit Prayers`
+      : "Prayer — Holy Spirit Prayers",
+    description: prayer
+      ? (prayer.description || prayer.aboutPrayer || prayer.categoryDescription || "Spirit-led prayer rooted in Scripture.").slice(0, 200)
+      : "Spirit-led prayer rooted in Scripture.",
+    canonicalPath: prayer ? `/prayer/${prayer.id}` : "/library",
+  });
 
   if (isLoading) {
     return (

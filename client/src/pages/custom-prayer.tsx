@@ -6,6 +6,7 @@ import { Scripture } from "@/components/brand/Scripture";
 import { Button } from "@/components/ui/button";
 import { categories } from "@/lib/data";
 import { apiRequest } from "@/lib/queryClient";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 const TONES = [
   "Gentle & Comforting",
@@ -26,6 +27,12 @@ type FormState = {
 };
 
 export default function CustomPrayerPage() {
+  useDocumentMeta({
+    title: "Request a Custom Prayer — Holy Spirit Prayers",
+    description:
+      "Request a personalized, Spirit-led prayer rooted in Scripture. Delivered in 24–48 hours as audio, text, or both.",
+    canonicalPath: "/custom-prayer",
+  });
   const [, navigate] = useLocation();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
