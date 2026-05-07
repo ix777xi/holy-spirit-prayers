@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Mail, Instagram, Youtube, Facebook } from "lucide-react";
 import { LogoMark } from "./Logo";
+import { openCookiePreferences } from "@/lib/cookie-consent";
 
 const CONTACT_EMAIL = "hello@holyspiritprayers.com";
 
@@ -41,6 +42,60 @@ export function Footer() {
             <Link href="/legal" className="hover:text-brand-gold transition-colors" data-testid="footer-link-legal">
               Legal
             </Link>
+          </nav>
+
+          <nav
+            className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-sans text-brand-cream/65"
+            aria-label="Legal"
+          >
+            <Link href="/legal/privacy" className="hover:text-brand-gold transition-colors" data-testid="footer-link-privacy">
+              Privacy Policy
+            </Link>
+            <span className="opacity-40">·</span>
+            <Link href="/legal/terms" className="hover:text-brand-gold transition-colors" data-testid="footer-link-terms">
+              Terms
+            </Link>
+            <span className="opacity-40">·</span>
+            <Link href="/legal/cookies" className="hover:text-brand-gold transition-colors" data-testid="footer-link-cookies">
+              Cookie Policy
+            </Link>
+            <span className="opacity-40">·</span>
+            <Link href="/legal/california" className="hover:text-brand-gold transition-colors" data-testid="footer-link-california">
+              California Privacy
+            </Link>
+            <span className="opacity-40">·</span>
+            <Link href="/legal/gdpr" className="hover:text-brand-gold transition-colors" data-testid="footer-link-gdpr">
+              GDPR
+            </Link>
+            <span className="opacity-40">·</span>
+            <Link href="/legal/disclaimer" className="hover:text-brand-gold transition-colors" data-testid="footer-link-disclaimer">
+              Disclaimer
+            </Link>
+            <span className="opacity-40">·</span>
+            <Link
+              href="/privacy-choices"
+              className="hover:text-brand-gold transition-colors"
+              data-testid="footer-link-privacy-choices"
+            >
+              Your Privacy Choices
+            </Link>
+            <span className="opacity-40">·</span>
+            <Link
+              href="/privacy-choices"
+              className="hover:text-brand-gold transition-colors"
+              data-testid="footer-link-do-not-sell"
+            >
+              Do Not Sell or Share
+            </Link>
+            <span className="opacity-40">·</span>
+            <button
+              type="button"
+              onClick={openCookiePreferences}
+              className="hover:text-brand-gold transition-colors underline-offset-2"
+              data-testid="footer-button-cookie-settings"
+            >
+              Cookie Settings
+            </button>
           </nav>
 
           <div className="flex items-center gap-1.5">

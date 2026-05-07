@@ -75,6 +75,31 @@ Frontend variables must be prefixed `VITE_` to be exposed to the browser (see Vi
 
 Railway will assign a public URL. The client uses **hash-based routing**, so the home route is `https://<your-app>.up.railway.app/#/`.
 
+### 5. Connect the custom domain `www.holyspiritprayers.com`
+
+The app is configured to canonicalize on `https://www.holyspiritprayers.com`
+(via the `SITE_URL` env var, which defaults to that origin). To wire it up:
+
+1. **Add the domain in Railway.** In the project's *Settings → Domains* tab,
+   click **Custom Domain** and add `www.holyspiritprayers.com`. Railway will
+   show the target hostname for your DNS record (something like
+   `<service>.up.railway.app`).
+2. **Create the DNS record at your registrar.** Add a `CNAME` for `www`
+   pointing at the Railway target hostname. If your DNS provider supports
+   apex flattening (e.g. Cloudflare), you can also add a `CNAME`/`ALIAS`
+   for the apex `holyspiritprayers.com` pointing at the same target;
+   otherwise add an `A` record per Railway's instructions and forward the
+   apex to `www` via your registrar.
+3. **Enable HTTPS.** Railway provisions a TLS certificate automatically
+   once the DNS record is verified — usually within a few minutes.
+4. **Set `SITE_URL`.** In Railway → *Variables*, set
+   `SITE_URL=https://www.holyspiritprayers.com` so canonical links,
+   `<link rel="canonical">`, OG tags, `sitemap.xml`, and the
+   `Sitemap:` directive in `robots.txt` all resolve to the live origin.
+5. **Verify.** Browse to `https://www.holyspiritprayers.com/robots.txt`
+   and `https://www.holyspiritprayers.com/sitemap.xml` — both should
+   reflect the `www` origin.
+
 ---
 
 ## Architecture
@@ -145,7 +170,7 @@ The server injects route-specific SEO before serving `index.html`:
   (price `$7.00 USD` unless `isFree` is set, in which case `$0.00`).
 
 The canonical origin comes from `SITE_URL` (default
-`https://holyspiritprayers.com`).
+`https://www.holyspiritprayers.com`).
 
 Server-rendered SEO endpoints (real plain text / XML, not the React app):
 
@@ -401,6 +426,76 @@ The current `routes.ts` uses an **in-memory store** that resets on restart. That
 - Typography: **Cormorant Garamond** serif for headings + **Inter** for body
 - Dark mode: first-class, toggled via React state seeded from `prefers-color-scheme` (no storage)
 - Custom inline SVG logo + navy/gold favicon embedded in `client/index.html`
+
+---
+
+## Legal & Privacy
+
+The site ships with template (not attorney-reviewed) legal pages and a
+GDPR/CCPA-flavored privacy hub. All pages live under `client/src/pages/static-pages.tsx`
+and render through `<LegalPage>` for `/legal/:section` plus dedicated
+top-level routes:
+
+| Route                       | What it serves                                            |
+| --------------------------- | --------------------------------------------------------- |
+| `/legal`                    | Index linking to every legal sub-page                     |
+| `/legal/privacy`, `/privacy`, `/privacy-policy`         | Privacy Policy             |
+| `/legal/terms`, `/terms`, `/terms-of-service`           | Terms of Service           |
+| `/legal/cookies`, `/cookies`, `/cookie-policy`          | Cookie Policy              |
+| `/legal/california`, `/california-privacy`, `/do-not-sell` | California / CCPA notice |
+| `/legal/gdpr`, `/gdpr`      | GDPR & data rights                                         |
+| `/legal/disclaimer`, `/disclaimer` | Faith & legal disclaimer                            |
+| `/legal/refunds`, `/refunds` | Refund Policy                                             |
+| `/privacy-choices`, `/your-privacy-choices` | DSAR / cookie preferences hub             |
+
+Each page advertises an effective date of `May 7, 2026` and a contact
+address of `support@holyspiritprayers.com`. Update both in
+`client/src/pages/static-pages.tsx` (`EFFECTIVE_DATE`, `LEGAL_CONTACT_EMAIL`)
+when content changes materially.
+
+### Cookie consent
+
+`client/src/components/brand/CookieConsent.tsx` mounts at the root and:
+
+- Shows a first-visit banner with **Accept all**, **Reject non-essential**,
+  and **Manage preferences** actions (data-testids `cookie-banner-accept`,
+  `cookie-banner-reject`, `cookie-banner-manage`).
+- Opens a Radix dialog with per-category Switches (`cookie-pref-essential`,
+  `cookie-pref-analytics`, `cookie-pref-marketing`). Essential is on and
+  disabled. Analytics and Marketing default off.
+- Persists the decision in a first-party cookie called `hsp_consent`
+  (`SameSite=Lax`, `Max-Age` of one year, `Secure` over HTTPS) via
+  `client/src/lib/cookie-consent.ts`. Cookie reads/writes are wrapped in
+  `try/catch` so a sandboxed environment cannot crash the app — the banner
+  simply re-shows on the next visit.
+- Exposes `openCookiePreferences()` so the footer **Cookie Settings**
+  button and the in-page links on the Cookie Policy / Privacy Choices
+  pages can re-open the modal.
+
+The app does **not** load any analytics or marketing scripts today; the
+Switch state is recorded for the future.
+
+### DSAR / privacy requests
+
+`/privacy-choices` lets users submit access, deletion, correction,
+opt-out-of-sale/share, limit-sensitive-PI, and withdraw-consent requests.
+Submissions POST to the existing `/api/contact` endpoint with a
+descriptive subject prefix and are appended to the in-memory contact log
+(`server/routes.ts` → `memory.contact`). Operationally, an admin still
+needs to:
+
+1. Stand up a real ticketing or email destination for `support@holyspiritprayers.com`.
+2. Define the verification + fulfillment workflow (the form already
+   captures account email + free-text details).
+3. Persist requests beyond restart (the in-memory store is intentional
+   for the prototype — see *Storage & Persistence* above).
+
+### What still needs to happen externally
+
+- DNS / Railway custom-domain wiring — see *Connect the custom domain*
+  above.
+- Have the legal copy reviewed by counsel before treating it as binding.
+- Wire transactional email delivery so DSAR confirmations are sent.
 
 ---
 

@@ -5,7 +5,7 @@ import { db } from "./storage";
 import { uploadedPrayers } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-const DEFAULT_SITE_URL = "https://holyspiritprayers.com";
+const DEFAULT_SITE_URL = "https://www.holyspiritprayers.com";
 
 export function getSiteUrl(): string {
   return (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, "");
@@ -113,6 +113,81 @@ function staticMeta(pathname: string, siteUrl: string): MetaContext | null {
         title: `Legal — ${SITE_NAME}`,
         description: "Terms, privacy, and legal notices.",
         canonical,
+        ogType: "website",
+      };
+    case "/privacy":
+    case "/privacy-policy":
+    case "/legal/privacy":
+      return {
+        title: `Privacy Policy — ${SITE_NAME}`,
+        description:
+          "How Holy Spirit Prayers collects, uses, and protects your personal information.",
+        canonical: `${siteUrl}/legal/privacy`,
+        ogType: "website",
+      };
+    case "/terms":
+    case "/terms-of-service":
+    case "/legal/terms":
+      return {
+        title: `Terms of Service — ${SITE_NAME}`,
+        description:
+          "The agreement between you and Holy Spirit Prayers when you use the Service.",
+        canonical: `${siteUrl}/legal/terms`,
+        ogType: "website",
+      };
+    case "/cookies":
+    case "/cookie-policy":
+    case "/legal/cookies":
+      return {
+        title: `Cookie Policy — ${SITE_NAME}`,
+        description:
+          "How Holy Spirit Prayers uses cookies and how to manage your preferences.",
+        canonical: `${siteUrl}/legal/cookies`,
+        ogType: "website",
+      };
+    case "/california-privacy":
+    case "/do-not-sell":
+    case "/legal/california":
+      return {
+        title: `California Privacy Notice — ${SITE_NAME}`,
+        description:
+          "Your CCPA/CPRA rights and the Holy Spirit Prayers Do Not Sell or Share commitment.",
+        canonical: `${siteUrl}/legal/california`,
+        ogType: "website",
+      };
+    case "/gdpr":
+    case "/legal/gdpr":
+      return {
+        title: `GDPR & Data Rights — ${SITE_NAME}`,
+        description:
+          "Your data rights under GDPR and how to exercise them with Holy Spirit Prayers.",
+        canonical: `${siteUrl}/legal/gdpr`,
+        ogType: "website",
+      };
+    case "/disclaimer":
+    case "/legal/disclaimer":
+      return {
+        title: `Faith & Legal Disclaimer — ${SITE_NAME}`,
+        description:
+          "Prayers offered by Holy Spirit Prayers are spiritual resources, not professional advice.",
+        canonical: `${siteUrl}/legal/disclaimer`,
+        ogType: "website",
+      };
+    case "/refunds":
+    case "/legal/refunds":
+      return {
+        title: `Refund Policy — ${SITE_NAME}`,
+        description: "When and how Holy Spirit Prayers issues refunds.",
+        canonical: `${siteUrl}/legal/refunds`,
+        ogType: "website",
+      };
+    case "/privacy-choices":
+    case "/your-privacy-choices":
+      return {
+        title: `Your Privacy Choices — ${SITE_NAME}`,
+        description:
+          "Submit a data access, deletion, correction, or opt-out request and manage your cookie preferences.",
+        canonical: `${siteUrl}/privacy-choices`,
         ogType: "website",
       };
     case "/login":
@@ -343,6 +418,19 @@ const SEO_PATHS = new Set([
   "/about",
   "/contact",
   "/legal",
+  "/privacy",
+  "/privacy-policy",
+  "/terms",
+  "/terms-of-service",
+  "/cookies",
+  "/cookie-policy",
+  "/california-privacy",
+  "/do-not-sell",
+  "/gdpr",
+  "/disclaimer",
+  "/refunds",
+  "/privacy-choices",
+  "/your-privacy-choices",
   "/login",
   "/register",
   "/forgot-password",
@@ -389,6 +477,15 @@ export function buildSitemapXml(): string {
     { loc: `${siteUrl}/custom-prayer`, lastmod: today, changefreq: "monthly", priority: "0.8" },
     { loc: `${siteUrl}/about`, lastmod: today, changefreq: "monthly", priority: "0.5" },
     { loc: `${siteUrl}/contact`, lastmod: today, changefreq: "monthly", priority: "0.4" },
+    { loc: `${siteUrl}/legal`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/legal/privacy`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/legal/terms`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/legal/cookies`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/legal/california`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/legal/gdpr`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/legal/disclaimer`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/legal/refunds`, lastmod: today, changefreq: "yearly", priority: "0.3" },
+    { loc: `${siteUrl}/privacy-choices`, lastmod: today, changefreq: "yearly", priority: "0.3" },
   ];
   try {
     const rows = db.select().from(uploadedPrayers).all();

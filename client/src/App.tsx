@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider, AuthProvider } from "@/lib/app-context";
+import { CookieConsent } from "@/components/brand/CookieConsent";
 
 import HomePage from "@/pages/home";
 import LibraryPage from "@/pages/library";
@@ -17,7 +18,19 @@ import {
   ForgotPasswordPage,
   ResetPasswordPage,
 } from "@/pages/auth";
-import { AboutPage, ContactPage, LegalPage } from "@/pages/static-pages";
+import {
+  AboutPage,
+  ContactPage,
+  LegalPage,
+  PrivacyPage,
+  TermsPage,
+  CookiesPage,
+  CaliforniaPrivacyPage,
+  GdprPage,
+  DisclaimerPage,
+  RefundsPage,
+  PrivacyChoicesPage,
+} from "@/pages/static-pages";
 import {
   AdminDashboard,
   AdminCustomRequests,
@@ -51,6 +64,21 @@ function AppRouter() {
       <Route path="/legal" component={LegalPage} />
       <Route path="/legal/:section" component={LegalPage} />
 
+      {/* Legal shortcut routes */}
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/privacy-policy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/terms-of-service" component={TermsPage} />
+      <Route path="/cookies" component={CookiesPage} />
+      <Route path="/cookie-policy" component={CookiesPage} />
+      <Route path="/california-privacy" component={CaliforniaPrivacyPage} />
+      <Route path="/do-not-sell" component={CaliforniaPrivacyPage} />
+      <Route path="/gdpr" component={GdprPage} />
+      <Route path="/disclaimer" component={DisclaimerPage} />
+      <Route path="/refunds" component={RefundsPage} />
+      <Route path="/privacy-choices" component={PrivacyChoicesPage} />
+      <Route path="/your-privacy-choices" component={PrivacyChoicesPage} />
+
       {/* Admin */}
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/uploads" component={AdminUploads} />
@@ -71,6 +99,7 @@ function App() {
             <Toaster />
             <Router hook={useHashLocation}>
               <AppRouter />
+              <CookieConsent />
             </Router>
           </TooltipProvider>
         </AuthProvider>
