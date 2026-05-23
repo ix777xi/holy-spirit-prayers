@@ -59,6 +59,7 @@ Add the following in **Railway → Variables**. None of these are required for t
 | `STRIPE_MONTHLY_PRICE_ID` | Optional Price ID for the $27/month subscription        | Optional               |
 | `STRIPE_PRAYER_PRICE_ID`  | Optional Price ID for the $7 one-time prayer purchase   | Optional               |
 | `SITE_URL`                | Canonical origin for SEO (canonical, OG, sitemap, robots) — no trailing slash | Recommended            |
+| `UPLOADS_DIR`             | Filesystem path for admin-uploaded MP3s + PDFs. Defaults to `./uploads`. Set to `/data/uploads` on Railway when using a mounted Volume so files persist across redeploys | Required on Railway   |
 | `SESSION_SECRET`          | Reserved for future signed-cookie/JWT session work      | Optional               |
 | `RESEND_API_KEY`          | Transactional email (or `SENDGRID_API_KEY`)             | Future                 |
 | `EMAIL_FROM`              | e.g. `prayers@holyspiritprayers.app`                    | Future                 |
@@ -99,6 +100,34 @@ The app is configured to canonicalize on `https://www.holyspiritprayers.com`
 5. **Verify.** Browse to `https://www.holyspiritprayers.com/robots.txt`
    and `https://www.holyspiritprayers.com/sitemap.xml` — both should
    reflect the `www` origin.
+
+### 6. Persist uploads with a Railway Volume
+
+Admin-uploaded MP3s and companion PDFs are written to disk by the Express
+server. Railway's default container filesystem is **ephemeral** — files are
+lost on every redeploy or restart. To keep uploads across deploys, attach
+a persistent Volume and point the server at it via `UPLOADS_DIR`:
+
+1. **Create the Volume.** In Railway → your service → *Settings → Volumes*,
+   click **Add Volume**. Choose a size (1–5 GB is plenty to start) and set
+   the **Mount path** to `/data`.
+2. **Set the env var.** In Railway → *Variables*, add
+   `UPLOADS_DIR=/data/uploads`. The server creates the directory
+   recursively at startup, so the `uploads/` subfolder under the mount
+   does not need to exist yet.
+3. **Redeploy / restart** the service so the new variable and volume
+   mount take effect. Subsequent uploads via `/#/admin/uploads` are
+   written under `/data/uploads/` and will survive future redeploys.
+4. **Migrate existing uploads.** Files already saved to the previous
+   ephemeral `uploads/` directory are **not** copied automatically. Either
+   re-upload them through the admin console after the volume is in place,
+   or (if you still have local copies) use `railway run` / `railway ssh`
+   to copy the MP3/PDF files into `/data/uploads/` while preserving the
+   randomized filenames recorded in the `uploaded_prayers` table.
+
+Without `UPLOADS_DIR` set, the server falls back to `./uploads` under the
+container's working directory — fine for local development, but those files
+will be lost on the next Railway redeploy.
 
 ---
 
@@ -282,9 +311,9 @@ Never commit real secret keys — only `STRIPE_SECRET_KEY` is read from
 ### Paid access to uploaded prayers
 
 Admin-uploaded MP3 prayers are **never** served from a public path. The audio
-file lives on disk in `uploads/` but is only reachable through the protected
-endpoints above (`/api/uploaded-prayers/:id/stream` and `…/download`), which
-require:
+file lives on disk under the configured uploads directory (`UPLOADS_DIR`, defaults
+to `./uploads`) but is only reachable through the protected endpoints above
+(`/api/uploaded-prayers/:id/stream` and `…/download`), which require:
 
 1. a valid logged-in user session (`hsp_sid` cookie), AND
 2. either an active monthly subscription, OR a recorded one-time purchase of
@@ -307,8 +336,8 @@ Each uploaded prayer can optionally include a downloadable PDF (transcript,
 workbook, or printable companion). The admin upload form at `/#/admin/uploads`
 exposes an optional **Companion PDF** input (`data-testid="input-upload-pdf"`)
 alongside the MP3 input — only `application/pdf` files are accepted server-side
-and the PDF is stored on disk in `uploads/` next to the MP3 with a randomized
-filename, never exposed by a public path.
+and the PDF is stored on disk under `UPLOADS_DIR` next to the MP3 with a
+randomized filename, never exposed by a public path.
 
 `GET /api/uploaded-prayers` includes `hasPdf`, `pdfOriginalName`, `pdfMimeType`,
 `pdfSize`, and a `pdfDownloadUrl` (only populated when the viewer has access).

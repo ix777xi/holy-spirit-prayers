@@ -51,9 +51,14 @@ let customPrayerCount = 0;
 
 /* ----- Upload handling (no multer dependency) ----- */
 
-const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
+// Uploads root. Configurable via UPLOADS_DIR so Railway deployments can point
+// at a mounted persistent volume (e.g. UPLOADS_DIR=/data/uploads). Defaults
+// to ./uploads under the process cwd for local development.
+const UPLOAD_DIR = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.resolve(process.cwd(), "uploads");
 function ensureUploadDir() {
-  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
 const MAX_UPLOAD_BYTES = 75 * 1024 * 1024; // 75MB (audio + optional PDF)
